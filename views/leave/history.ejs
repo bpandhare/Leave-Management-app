@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-pending { background-color: #fef3c7; color: #92400e; }
+        .status-approved { background-color: #d1fae5; color: #065f46; }
+        .status-rejected { background-color: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-calendar-alt text-2xl"></i>
+                    <h1 class="text-2xl font-bold">LeaveManager</h1>
+                    <span class="bg-blue-500 px-3 py-1 rounded-full text-sm font-semibold">
+                        <%= user.role === 'hod' ? 'HOD Panel' : 'Faculty Panel' %>
+                    </span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/dashboard" class="hover:text-blue-200 transition duration-200 flex items-center">
+                        <i class="fas fa-arrow-left mr-2"></i> Back to Dashboard
+                    </a>
+                    <span>Welcome, <%= user.username %></span>
+                    <form method="POST" action="/auth/logout" class="inline">
+                        <button type="submit" class="hover:text-blue-200 transition duration-200">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Page Header -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h2 class="text-3xl font-bold text-gray-800">Leave History</h2>
+                <p class="text-gray-600 mt-2">View all your leave applications and their status</p>
+            </div>
+            <a href="/leave/apply" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold flex items-center transition duration-200">
+                <i class="fas fa-plus mr-2"></i> Apply for Leave
+            </a>
+        </div>
+
+        <!-- Leave Applications Table -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <% if (!leaves || leaves.length === 0) { %>
+                <div class="text-center py-12">
+                    <i class="fas fa-inbox text-4xl text-gray-300 mb-4"></i>
+                    <h3 class="text-xl font-semibold text-gray-600 mb-2">No Leave Applications</h3>
+                    <p class="text-gray-500 mb-4">You haven't applied for any leaves yet.</p>
+                    <a href="/leave/apply" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold inline-flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Apply for Your First Leave
+                    </a>
+                </div>
+            <% } else { %>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Leave Details
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Dates & Duration
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Status
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Applied On
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <% leaves.forEach(leave => { %>
+                                <tr class="hover:bg-gray-50 transition duration-150">
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm font-medium text-gray-900 capitalize">
+                                            <%= leave.leaveType %> Leave
+                                        </div>
+                                        <div class="text-sm text-gray-500 mt-1">
+                                            <%= leave.reason %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm text-gray-900">
+                                            <strong>From:</strong> <%= new Date(leave.startDate).toLocaleDateString() %>
+                                        </div>
+                                        <div class="text-sm text-gray-900">
+                                            <strong>To:</strong> <%= new Date(leave.endDate).toLocaleDateString() %>
+                                        </div>
+                                        <div class="text-xs text-blue-600 font-semibold mt-1">
+                                            <%= leave.totalDays %> <%= leave.totalDays === 1 ? 'day' : 'days' %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="status-badge <%= 
+                                            leave.status === 'Pending' ? 'status-pending' : 
+                                            leave.status === 'Approved' ? 'status-approved' : 
+                                            'status-rejected' 
+                                        %>">
+                                            <%= leave.status %>
+                                        </span>
+                                        <% if (leave.status === 'Approved' && leave.approvedBy) { %>
+                                            <div class="text-xs text-gray-500 mt-1">
+                                                Approved by: <%= leave.approvedBy.username %>
+                                            </div>
+                                        <% } %>
+                                        <% if (leave.status === 'Rejected' && leave.rejectionReason) { %>
+                                            <button onclick="showRejectionReason('<%= leave.rejectionReason %>')" 
+                                                    class="text-xs text-red-600 hover:text-red-800 mt-1">
+                                                <i class="fas fa-eye mr-1"></i> View Reason
+                                            </button>
+                                        <% } %>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <%= new Date(leave.createdAt).toLocaleDateString() %>
+                                        <br>
+                                        <span class="text-xs">
+                                            <%= new Date(leave.createdAt).toLocaleTimeString() %>
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <% if (leave.status === 'Pending') { %>
+                                            <span class="text-gray-400">Waiting for approval</span>
+                                        <% } else if (leave.status === 'Approved') { %>
+                                            <span class="text-green-600 flex items-center">
+                                                <i class="fas fa-check-circle mr-1"></i> Approved
+                                            </span>
+                                        <% } else { %>
+                                            <span class="text-red-600 flex items-center">
+                                                <i class="fas fa-times-circle mr-1"></i> Rejected
+                                            </span>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            <% } %>
+        </div>
+
+        <!-- Statistics -->
+        <% if (leaves && leaves.length > 0) { %>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase">Total Applications</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2"><%= leaves.length %></p>
+                    </div>
+                    <div class="bg-blue-100 p-3 rounded-full">
+                        <i class="fas fa-file-alt text-2xl text-blue-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase">Approved</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2">
+                            <%= leaves.filter(l => l.status === 'Approved').length %>
+                        </p>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-full">
+                        <i class="fas fa-check-circle text-2xl text-green-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase">Pending</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2">
+                            <%= leaves.filter(l => l.status === 'Pending').length %>
+                        </p>
+                    </div>
+                    <div class="bg-yellow-100 p-3 rounded-full">
+                        <i class="fas fa-clock text-2xl text-yellow-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase">Rejected</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2">
+                            <%= leaves.filter(l => l.status === 'Rejected').length %>
+                        </p>
+                    </div>
+                    <div class="bg-red-100 p-3 rounded-full">
+                        <i class="fas fa-times-circle text-2xl text-red-500"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <% } %>
+    </div>
+
+    <!-- Rejection Reason Modal -->
+    <div id="rejectionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                    <i class="fas fa-exclamation-triangle text-red-600"></i>
+                </div>
+                <div class="mt-3 text-center">
+                    <h3 class="text-lg font-medium text-gray-900">Rejection Reason</h3>
+                    <div class="mt-2 px-7 py-3">
+                        <p id="rejectionReasonText" class="text-sm text-gray-500"></p>
+                    </div>
+                    <div class="items-center px-4 py-3">
+                        <button onclick="closeRejectionReason()" 
+                                class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showRejectionReason(reason) {
+            document.getElementById('rejectionReasonText').textContent = reason;
+            document.getElementById('rejectionModal').classList.remove('hidden');
+        }
+
+        function closeRejectionReason() {
+            document.getElementById('rejectionModal').classList.add('hidden');
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('rejectionModal');
+            if (event.target === modal) {
+                closeRejectionReason();
+            }
+        }
+    </script>
+</body>
+</html>

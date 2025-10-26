@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .dashboard-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            border: none;
+            border-radius: 15px;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+        }
+        .welcome-section {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 15px;
+        }
+        .quick-actions .btn {
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .quick-actions .btn:hover {
+            transform: scale(1.05);
+        }
+        .navbar-brand {
+            font-weight: 700;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .progress {
+            border-radius: 10px;
+        }
+        .workload-badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+        }
+        .notification-dot {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 12px;
+            height: 12px;
+            background: #ff4757;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+        .hod-actions {
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        .leave-status-badge {
+            font-size: 0.75rem;
+        }
+        
+        /* Fix for reject button blinking */
+        button[data-bs-target^="#rejectModal"],
+        button[data-bs-target^="#rejectionReasonModal"] {
+            transform: translateZ(0) !important;
+            backface-visibility: hidden !important;
+            perspective: 1000px !important;
+            -webkit-transform: translateZ(0) !important;
+            will-change: transform;
+        }
+        
+        /* Fix for modal buttons */
+        .modal .btn-danger {
+            transform: translateZ(0) !important;
+            backface-visibility: hidden !important;
+            perspective: 1000px !important;
+        }
+        
+        /* Remove any problematic transitions for reject buttons */
+        button[data-bs-target^="#rejectModal"],
+        button[data-bs-target^="#rejectionReasonModal"],
+        button[data-bs-target^="#rejectModal"]:hover,
+        button[data-bs-target^="#rejectionReasonModal"]:hover,
+        button[data-bs-target^="#rejectModal"]:active,
+        button[data-bs-target^="#rejectionReasonModal"]:active,
+        button[data-bs-target^="#rejectModal"]:focus,
+        button[data-bs-target^="#rejectionReasonModal"]:focus {
+            transition: none !important;
+            animation: none !important;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="fas fa-calendar-alt me-2"></i>
+                LeaveManager
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/dashboard">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/leave/apply">
+                            <i class="fas fa-plus-circle me-1"></i>Apply Leave
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/leave/history">
+                            <i class="fas fa-history me-1"></i>Leave History
+                        </a>
+                    </li>
+                    <% if (user.role === 'hod') { %>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/leave/applications">
+                            <i class="fas fa-check-circle me-1"></i>Approvals
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/api/hod/assign-workload">
+                            <i class="fas fa-tasks me-1"></i>Assign Workload
+                        </a>
+                    </li>
+                    <% } %>
+                    <% if (user.role === 'faculty') { %>
+                    <li class="nav-item">
+                        <a class="nav-link position-relative" href="/api/faculty/workload">
+                            <i class="fas fa-list-check me-1"></i>Workload
+                            <% if (workloadStats && workloadStats.pendingAssignments > 0) { %>
+                                <span class="notification-dot"></span>
+                            <% } %>
+                        </a>
+                    </li>
+                    <% } %>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <div class="user-avatar me-2">
+                                <%= user.name ? user.name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase() %>
+                            </div>
+                            <%= user.name || user.username %>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><span class="dropdown-item-text">
+                                <small class="text-muted">Signed in as</small><br>
+                                <strong><%= user.role %></strong>
+                            </span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#">
+                                <i class="fas fa-user me-2"></i>Profile
+                            </a></li>
+                            <li><a class="dropdown-item" href="#">
+                                <i class="fas fa-cog me-2"></i>Settings
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="POST" action="/auth/logout" class="d-inline">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Success/Error Messages -->
+        <% if (typeof success !== 'undefined' && success) { %>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i><%= success %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <% } %>
+        
+        <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i><%= error %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <% } %>
+
+        <!-- Welcome Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card welcome-section shadow-sm">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h1 class="display-6 fw-bold mb-2">Welcome back, <%= user.name || user.username %>! 👋</h1>
+                                <p class="lead mb-0">Here's your leave management dashboard for 
+                                    <strong id="currentDate"></strong>
+                                </p>
+                                <% if (workloadStats && workloadStats.pendingAssignments > 0) { %>
+                                    <div class="mt-2">
+                                        <span class="badge bg-warning workload-badge">
+                                            <i class="fas fa-bell me-1"></i>
+                                            You have <%= workloadStats.pendingAssignments %> pending workload assignment(s)
+                                        </span>
+                                    </div>
+                                <% } %>
+                                <% if (user.role === 'hod' && stats.pending > 0) { %>
+                                    <div class="mt-2">
+                                        <span class="badge bg-info workload-badge">
+                                            <i class="fas fa-clock me-1"></i>
+                                            <%= stats.pending %> leave applications pending approval
+                                        </span>
+                                    </div>
+                                <% } %>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <div class="user-avatar mx-auto" style="width: 80px; height: 80px; font-size: 2rem;">
+                                    <%= user.name ? user.name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase() %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card stat-card shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title text-white-50">Total Leaves</h6>
+                                <h2 class="text-white"><%= stats.total || 0 %></h2>
+                            </div>
+                            <div class="text-white">
+                                <i class="fas fa-calendar-check fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card stat-card shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title text-white-50">Pending</h6>
+                                <h2 class="text-white"><%= stats.pending || 0 %></h2>
+                            </div>
+                            <div class="text-white">
+                                <i class="fas fa-clock fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card stat-card shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title text-white-50">Approved</h6>
+                                <h2 class="text-white"><%= stats.approved || 0 %></h2>
+                            </div>
+                            <div class="text-white">
+                                <i class="fas fa-check-circle fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card stat-card shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title text-white-50">Balance</h6>
+                                <h2 class="text-white"><%= stats.balance || 15 %></h2>
+                            </div>
+                            <div class="text-white">
+                                <i class="fas fa-coins fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workload Stats for Faculty -->
+        <% if (user.role === 'faculty' && workloadStats) { %>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card dashboard-card shadow-sm">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-tasks text-info me-2"></i>Workload Assignments
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-3 mb-3">
+                                <div class="border rounded p-3">
+                                    <h3 class="text-warning"><%= workloadStats.pendingAssignments || 0 %></h3>
+                                    <p class="text-muted mb-0">Pending</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="border rounded p-3">
+                                    <h3 class="text-success"><%= workloadStats.approvedAssignments || 0 %></h3>
+                                    <p class="text-muted mb-0">Approved</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="border rounded p-3">
+                                    <h3 class="text-danger"><%= workloadStats.rejectedAssignments || 0 %></h3>
+                                    <p class="text-muted mb-0">Rejected</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="border rounded p-3">
+                                    <h3 class="text-primary"><%= workloadStats.totalAssignments || 0 %></h3>
+                                    <p class="text-muted mb-0">Total</p>
+                                </div>
+                            </div>
+                        </div>
+                        <% if (workloadStats.pendingAssignments > 0) { %>
+                        <div class="text-center mt-3">
+                            <a href="/api/faculty/workload" class="btn btn-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Review Pending Assignments
+                            </a>
+                        </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Quick Actions & Recent Activity -->
+        <div class="row">
+            <!-- Quick Actions -->
+            <div class="col-lg-6 mb-4">
+                <div class="card dashboard-card shadow-sm h-100">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-bolt text-warning me-2"></i>Quick Actions
+                        </h5>
+                    </div>
+                    <div class="card-body quick-actions">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <a href="/leave/apply" class="btn btn-primary w-100 py-3">
+                                    <i class="fas fa-plus-circle fa-2x mb-2"></i><br>
+                                    Apply Leave
+                                </a>
+                            </div>
+                            <div class="col-md-6">
+                                <a href="/leave/history" class="btn btn-success w-100 py-3">
+                                    <i class="fas fa-history fa-2x mb-2"></i><br>
+                                    View History
+                                </a>
+                            </div>
+                            
+                            <!-- Role-based quick actions -->
+                            <% if (user.role === 'faculty') { %>
+                            <div class="col-md-6">
+                                <a href="/api/faculty/workload" class="btn btn-info w-100 py-3 position-relative">
+                                    <i class="fas fa-list-check fa-2x mb-2"></i><br>
+                                    Workload
+                                    <% if (workloadStats && workloadStats.pendingAssignments > 0) { %>
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                            <%= workloadStats.pendingAssignments %>
+                                        </span>
+                                    <% } %>
+                                </a>
+                            </div>
+                            <% } %>
+                            
+                            <% if (user.role === 'hod') { %>
+                            <div class="col-md-6">
+                                <a href="/api/hod/assign-workload" class="btn btn-warning w-100 py-3">
+                                    <i class="fas fa-tasks fa-2x mb-2"></i><br>
+                                    Assign Workload
+                                </a>
+                            </div>
+                            <div class="col-md-6">
+                                <a href="/leave/applications" class="btn btn-purple w-100 py-3" style="background: #6f42c1; color: white;">
+                                    <i class="fas fa-check-circle fa-2x mb-2"></i><br>
+                                    Approve Leaves
+                                </a>
+                            </div>
+                            <% } %>
+                            
+                            <div class="col-md-6">
+                                <a href="#" class="btn btn-secondary w-100 py-3">
+                                    <i class="fas fa-calendar-alt fa-2x mb-2"></i><br>
+                                    Calendar View
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HOD Dashboard - Leave Approval Section -->
+            <% if (user.role.toLowerCase() === 'hod') { %>
+                <!-- Pending Leaves for Approval -->
+                <div class="row">
+                    <div class="col-12 mb-4">
+                        <div class="card dashboard-card shadow-sm">
+                            <div class="card-header bg-warning text-dark">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-clock me-2"></i>Pending Leave Approvals
+                                    <% if (pendingLeaves && pendingLeaves.length > 0) { %>
+                                        <span class="badge bg-danger ms-2"><%= pendingLeaves.length %></span>
+                                    <% } %>
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <% if (pendingLeaves && pendingLeaves.length > 0) { %>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Faculty</th>
+                                                    <th>Leave Type</th>
+                                                    <th>Dates</th>
+                                                    <th>Reason</th>
+                                                    <th>Applied On</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <% pendingLeaves.forEach(leave => { %>
+                                                <tr>
+                                                    <td>
+                                                        <strong><%= leave.faculty.username %></strong>
+                                                        <br>
+                                                        <small class="text-muted"><%= leave.faculty.department %></small>
+                                                    </td>
+                                                    <td class="text-capitalize"><%= leave.leaveType %></td>
+                                                    <td>
+                                                        <%= new Date(leave.startDate).toLocaleDateString() %>
+                                                        <br>
+                                                        <small class="text-muted">to</small>
+                                                        <br>
+                                                        <%= new Date(leave.endDate).toLocaleDateString() %>
+                                                    </td>
+                                                    <td><%= leave.reason %></td>
+                                                    <td><%= new Date(leave.createdAt).toLocaleDateString() %></td>
+                                                    <td>
+                                                        <div class="btn-group" role="group">
+                                                            <!-- Approve Button -->
+                                                            <form method="POST" action="/dashboard/leave/<%= leave._id %>/approve" class="d-inline">
+                                                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Approve this leave application?')">
+                                                                    <i class="fas fa-check"></i> Approve
+                                                                </button>
+                                                            </form>
+                                                            
+                                                            <!-- Reject Button - Fixed to prevent blinking -->
+                                                            <button type="button" class="btn btn-danger btn-sm ms-1" 
+                                                                    data-bs-toggle="modal" 
+                                                                    data-bs-target="#rejectModal<%= leave._id %>">
+                                                                <i class="fas fa-times"></i> Reject
+                                                            </button>
+                                                        </div>
+                                                        
+                                                        <!-- Reject Modal -->
+                                                        <div class="modal fade" id="rejectModal<%= leave._id %>" tabindex="-1" aria-labelledby="rejectModalLabel<%= leave._id %>" aria-hidden="true">
+                                                            <div class="modal-dialog">
+                                                                <div class="modal-content">
+                                                                    <div class="modal-header">
+                                                                        <h5 class="modal-title" id="rejectModalLabel<%= leave._id %>">Reject Leave Application</h5>
+                                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                                    </div>
+                                                                    <form method="POST" action="/dashboard/leave/<%= leave._id %>/reject" id="rejectForm<%= leave._id %>">
+                                                                        <div class="modal-body">
+                                                                            <div class="alert alert-warning">
+                                                                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                                                                You are about to reject this leave application.
+                                                                            </div>
+                                                                            <div class="mb-3">
+                                                                                <p><strong>Faculty:</strong> <%= leave.faculty.username %></p>
+                                                                                <p><strong>Department:</strong> <%= leave.faculty.department %></p>
+                                                                                <p><strong>Leave Type:</strong> <span class="text-capitalize"><%= leave.leaveType %></span> Leave</p>
+                                                                                <p><strong>Dates:</strong> <%= new Date(leave.startDate).toLocaleDateString() %> to <%= new Date(leave.endDate).toLocaleDateString() %></p>
+                                                                                <p><strong>Duration:</strong> <%= leave.totalDays %> day(s)</p>
+                                                                                <p><strong>Reason:</strong> <%= leave.reason %></p>
+                                                                            </div>
+                                                                            <div class="mb-3">
+                                                                                <label for="rejectionReason<%= leave._id %>" class="form-label">Reason for Rejection *</label>
+                                                                                <textarea name="rejectionReason" id="rejectionReason<%= leave._id %>" class="form-control" rows="4" required 
+                                                                                        placeholder="Please provide a clear reason for rejecting this leave application..."></textarea>
+                                                                                <div class="form-text">This reason will be visible to the faculty member.</div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="modal-footer">
+                                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                                                <i class="fas fa-times me-1"></i> Cancel
+                                                                            </button>
+                                                                            <button type="submit" class="btn btn-danger">
+                                                                                <i class="fas fa-ban me-1"></i> Reject Leave
+                                                                            </button>
+                                                                        </div>
+                                                                    </form>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <% }) %>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <% } else { %>
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                        <p class="text-muted">No pending leave applications for approval.</p>
+                                    </div>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Approved Leaves -->
+                <div class="row">
+                    <div class="col-lg-6 mb-4">
+                        <div class="card dashboard-card shadow-sm">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-check-circle me-2"></i>Recently Approved Leaves
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <% if (approvedLeaves && approvedLeaves.length > 0) { %>
+                                    <div class="list-group list-group-flush">
+                                        <% approvedLeaves.slice(0, 5).forEach(leave => { %>
+                                            <div class="list-group-item">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h6 class="mb-1"><%= leave.faculty.username %></h6>
+                                                        <p class="mb-1 text-muted small"><%= leave.leaveType %> Leave</p>
+                                                        <p class="mb-0 text-muted small">
+                                                            <%= new Date(leave.startDate).toLocaleDateString() %> - <%= new Date(leave.endDate).toLocaleDateString() %>
+                                                        </p>
+                                                    </div>
+                                                    <span class="badge bg-success">Approved</span>
+                                                </div>
+                                            </div>
+                                        <% }) %>
+                                    </div>
+                                <% } else { %>
+                                    <div class="text-center py-4 text-muted">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                                        <p>No approved leaves</p>
+                                    </div>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rejected Leaves -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card dashboard-card shadow-sm">
+                            <div class="card-header bg-danger text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-times-circle me-2"></i>Recently Rejected Leaves
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <% if (rejectedLeaves && rejectedLeaves.length > 0) { %>
+                                    <div class="list-group list-group-flush">
+                                        <% rejectedLeaves.slice(0, 5).forEach(leave => { %>
+                                            <div class="list-group-item">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h6 class="mb-1"><%= leave.faculty.username %></h6>
+                                                        <p class="mb-1 text-muted small"><%= leave.leaveType %> Leave</p>
+                                                        <p class="mb-0 text-muted small">
+                                                            Reason: <%= leave.rejectionReason || 'No reason provided' %>
+                                                        </p>
+                                                    </div>
+                                                    <span class="badge bg-danger">Rejected</span>
+                                                </div>
+                                            </div>
+                                        <% }) %>
+                                    </div>
+                                <% } else { %>
+                                    <div class="text-center py-4 text-muted">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                                        <p>No rejected leaves</p>
+                                    </div>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            <% } else { %>
+                <!-- Faculty Dashboard - My Leave Applications -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card dashboard-card shadow-sm h-100">
+                        <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-list-alt text-info me-2"></i>My Leave Applications
+                            </h5>
+                            <a href="/leave/history" class="btn btn-outline-primary btn-sm">View All</a>
+                        </div>
+                        <div class="card-body">
+                            <% if (leaves.length === 0) { %>
+                                <div class="text-center py-4">
+                                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">No leave applications yet.</p>
+                                    <a href="/leave/apply" class="btn btn-primary">Apply for Leave</a>
+                                </div>
+                            <% } else { %>
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Leave Type</th>
+                                                <th>Dates</th>
+                                                <th>Duration</th>
+                                                <th>Status</th>
+                                                <th>Last Updated</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <% leaves.forEach(leave => { %>
+                                            <tr>
+                                                <td class="text-capitalize">
+                                                    <strong><%= leave.leaveType %></strong>
+                                                    <br>
+                                                    <small class="text-muted"><%= leave.reason %></small>
+                                                </td>
+                                                <td>
+                                                    <small>
+                                                        <%= new Date(leave.startDate).toLocaleDateString() %>
+                                                        <br>to<br>
+                                                        <%= new Date(leave.endDate).toLocaleDateString() %>
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-secondary"><%= leave.totalDays %> days</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge leave-status-badge
+                                                        <%= leave.status === 'Approved' ? 'bg-success' : 
+                                                            leave.status === 'Rejected' ? 'bg-danger' : 'bg-warning' %>">
+                                                        <%= leave.status %>
+                                                    </span>
+                                                    <% if (leave.status === 'Rejected' && leave.rejectionReason) { %>
+                                                        <br>
+                                                        <small class="text-muted" title="<%= leave.rejectionReason %>">
+                                                            <i class="fas fa-info-circle"></i> See reason
+                                                        </small>
+                                                    <% } %>
+                                                    <% if (leave.status === 'Approved' && leave.approvedBy) { %>
+                                                        <br>
+                                                        <small class="text-muted">
+                                                            By: <%= leave.approvedBy.username %>
+                                                        </small>
+                                                    <% } %>
+                                                </td>
+                                                <td>
+                                                    <small class="text-muted">
+                                                        <%= new Date(leave.updatedAt).toLocaleDateString() %>
+                                                        <br>
+                                                        <%= new Date(leave.updatedAt).toLocaleTimeString() %>
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    <% if (leave.status === 'Pending') { %>
+                                                        <span class="text-muted small">Waiting for approval</span>
+                                                    <% } else if (leave.status === 'Approved') { %>
+                                                        <span class="text-success small">
+                                                            <i class="fas fa-check"></i> Approved
+                                                        </span>
+                                                    <% } else if (leave.status === 'Rejected') { %>
+                                                        <button class="btn btn-sm btn-outline-danger" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#rejectionReasonModal<%= leave._id %>">
+                                                            <i class="fas fa-eye"></i> View Reason
+                                                        </button>
+                                                        
+                                                        <!-- Rejection Reason Modal -->
+                                                        <div class="modal fade" id="rejectionReasonModal<%= leave._id %>" tabindex="-1">
+                                                            <div class="modal-dialog">
+                                                                <div class="modal-content">
+                                                                    <div class="modal-header">
+                                                                        <h5 class="modal-title">Rejection Reason</h5>
+                                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                                    </div>
+                                                                    <div class="modal-body">
+                                                                        <p><strong>Leave Type:</strong> <%= leave.leaveType %></p>
+                                                                        <p><strong>Dates:</strong> <%= new Date(leave.startDate).toLocaleDateString() %> to <%= new Date(leave.endDate).toLocaleDateString() %></p>
+                                                                        <p><strong>Reason for Rejection:</strong></p>
+                                                                        <div class="alert alert-danger">
+                                                                            <%= leave.rejectionReason || 'No reason provided' %>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="modal-footer">
+                                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    <% } %>
+                                                </td>
+                                            </tr>
+                                            <% }) %>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+
+        <!-- Recent Workload Assignments for Faculty -->
+        <% if (user.role === 'faculty' && recentAssignments && recentAssignments.length > 0) { %>
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card dashboard-card shadow-sm">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-list-check text-success me-2"></i>Recent Workload Assignments
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Assigned By</th>
+                                        <th>Subjects</th>
+                                        <th>Classes</th>
+                                        <th>Hours</th>
+                                        <th>Status</th>
+                                        <th>Assigned Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% recentAssignments.forEach(assignment => { %>
+                                    <tr>
+                                        <td><%= assignment.assignedBy.name %></td>
+                                        <td><%= assignment.subjects.join(', ') %></td>
+                                        <td><%= assignment.classes.join(', ') %></td>
+                                        <td><%= assignment.totalHours %></td>
+                                        <td>
+                                            <span class="badge 
+                                                <%= assignment.status === 'approved' ? 'bg-success' : 
+                                                    assignment.status === 'rejected' ? 'bg-danger' : 'bg-warning' %>">
+                                                <%= assignment.status %>
+                                            </span>
+                                        </td>
+                                        <td><%= new Date(assignment.assignedAt).toLocaleDateString() %></td>
+                                    </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="/api/faculty/workload" class="btn btn-primary">View All Assignments</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- User Info & System Stats -->
+        <div class="row mt-4">
+            <div class="col-lg-6 mb-4">
+                <div class="card dashboard-card shadow-sm">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-user-circle text-primary me-2"></i>Your Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong><i class="fas fa-user me-2"></i>Name:</strong><br>
+                                <span class="text-muted"><%= user.name || user.username %></span></p>
+                                
+                                <p><strong><i class="fas fa-envelope me-2"></i>Email:</strong><br>
+                                <span class="text-muted"><%= user.email %></span></p>
+                                
+                                <p><strong><i class="fas fa-user-tag me-2"></i>Role:</strong><br>
+                                <span class="badge bg-primary text-capitalize"><%= user.role %></span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong><i class="fas fa-building me-2"></i>Department:</strong><br>
+                                <span class="text-muted"><%= user.department %></span></p>
+                                
+                                <% if (user.phone) { %>
+                                <p><strong><i class="fas fa-phone me-2"></i>Phone:</strong><br>
+                                <span class="text-muted"><%= user.phone %></span></p>
+                                <% } %>
+                                
+                                <% if (user.createdAt) { %>
+                                <p><strong><i class="fas fa-calendar-plus me-2"></i>Member Since:</strong><br>
+                                <span class="text-muted"><%= new Date(user.createdAt).toLocaleDateString() %></span></p>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6 mb-4">
+                <div class="card dashboard-card shadow-sm">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-bar text-success me-2"></i>Leave Statistics
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <% 
+                            const total = stats.total || 1; // Avoid division by zero
+                            const approvedPercent = total > 0 ? Math.round((stats.approved / total) * 100) : 0;
+                            const pendingPercent = total > 0 ? Math.round((stats.pending / total) * 100) : 0;
+                            const rejectedPercent = total > 0 ? Math.round((stats.rejected / total) * 100) : 0;
+                        %>
+                        <div class="progress mb-3" style="height: 25px;">
+                            <div class="progress-bar bg-success" style="width: <%= approvedPercent %>%">
+                                Approved (<%= approvedPercent %>%)
+                            </div>
+                        </div>
+                        <div class="progress mb-3" style="height: 25px;">
+                            <div class="progress-bar bg-warning" style="width: <%= pendingPercent %>%">
+                                Pending (<%= pendingPercent %>%)
+                            </div>
+                        </div>
+                        <div class="progress mb-3" style="height: 25px;">
+                            <div class="progress-bar bg-danger" style="width: <%= rejectedPercent %>%">
+                                Rejected (<%= rejectedPercent %>%)
+                            </div>
+                        </div>
+                        <div class="text-center mt-4">
+                            <p class="text-muted">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <% if (stats.totalDays) { %>
+                                    You have used <%= stats.totalDays %> out of <%= stats.balance + stats.totalDays %> available leave days.
+                                <% } else { %>
+                                    Track your leave usage and balance here.
+                                <% } %>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white mt-5 py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-calendar-alt me-2"></i>LeaveManager</h5>
+                    <p class="mb-0">Streamlining leave management for educational institutions.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0">&copy; 2025 Leave Management System. All rights reserved.</p>
+                    <small>v1.0.0</small>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-dismiss alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+
+            // Set current date
+            const currentDateElement = document.getElementById('currentDate');
+            if (currentDateElement) {
+                const now = new Date();
+                const options = { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                };
+                currentDateElement.textContent = now.toLocaleDateString('en-US', options);
+            }
+
+            // Fix for reject button blinking issue
+            const rejectButtons = document.querySelectorAll('button[data-bs-target^="#rejectModal"], button[data-bs-target^="#rejectionReasonModal"]');
+            rejectButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Get the modal ID from data-bs-target
+                    const modalId = this.getAttribute('data-bs-target');
+                    const modal = document.querySelector(modalId);
+                    
+                    if (modal) {
+                        // Show the modal using Bootstrap
+                        const bsModal = new bootstrap.Modal(modal);
+                        bsModal.show();
+                    }
+                });
+            });
+
+            // Add validation for reject forms
+            const rejectForms = document.querySelectorAll('form[action*="/reject"]');
+            rejectForms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    const textarea = this.querySelector('textarea[name="rejectionReason"]');
+                    if (!textarea || !textarea.value.trim()) {
+                        e.preventDefault();
+                        alert('Please provide a reason for rejection.');
+                        textarea.focus();
+                        return false;
+                    }
+                    
+                    if (!confirm('Are you sure you want to reject this leave application?')) {
+                        e.preventDefault();
+                        return false;
+                    }
+                    
+                    return true;
+                });
+            });
+
+            // Auto-refresh dashboard every 30 seconds to see updates
+            let lastUpdateTime = new Date().getTime();
+            
+            // Check for updates every 30 seconds
+            setInterval(function() {
+                fetch('/dashboard/last-update')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.lastUpdate > lastUpdateTime) {
+                            console.log('Changes detected, refreshing page...');
+                            location.reload();
+                        }
+                    })
+                    .catch(error => console.error('Error checking updates:', error));
+            }, 30000); // 30 seconds
+
+            // Also refresh when page becomes visible (user switches back to tab)
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) {
+                    console.log('Page visible, checking for updates...');
+                    location.reload();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

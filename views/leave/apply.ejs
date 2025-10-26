@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .alert {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid;
+        }
+        .alert-success {
+            background-color: #f0fdf4;
+            border-color: #bbf7d0;
+            color: #166534;
+        }
+        .alert-error {
+            background-color: #fef2f2;
+            border-color: #fecaca;
+            color: #dc2626;
+        }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            ring: 2px solid #3b82f6;
+            border-color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-calendar-alt text-2xl"></i>
+                    <h1 class="text-2xl font-bold">LeaveManager</h1>
+                    <span class="bg-blue-500 px-3 py-1 rounded-full text-sm font-semibold">
+                        <%= user.role === 'hod' ? 'HOD Panel' : 'Faculty Panel' %>
+                    </span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/dashboard" class="hover:text-blue-200 transition duration-200 flex items-center">
+                        <i class="fas fa-arrow-left mr-2"></i> Back to Dashboard
+                    </a>
+                    <span>Welcome, <%= user.username %></span>
+                    <form method="POST" action="/auth/logout" class="inline">
+                        <button type="submit" class="hover:text-blue-200 transition duration-200">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert alert-error mb-6 flex justify-between items-center">
+                <span><i class="fas fa-exclamation-circle mr-2"></i><%= error %></span>
+                <button onclick="this.parentElement.remove()" class="text-red-700 hover:text-red-900">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        <% } %>
+
+        <% if (typeof success !== 'undefined' && success) { %>
+            <div class="alert alert-success mb-6 flex justify-between items-center">
+                <span><i class="fas fa-check-circle mr-2"></i><%= success %></span>
+                <button onclick="this.parentElement.remove()" class="text-green-700 hover:text-green-900">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        <% } %>
+
+        <div class="bg-white rounded-lg shadow-md p-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Apply for Leave</h2>
+            
+            <form method="POST" action="/leave/apply" id="leaveForm" class="space-y-6">
+                <!-- Use user.id instead of user._id -->
+                <input type="hidden" name="faculty" value="<%= user.id %>">
+
+                <!-- Leave Details -->
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="leaveType" class="block text-gray-700 font-semibold mb-2">Leave Type *</label>
+                        <select id="leaveType" name="leaveType" class="form-select" required>
+                            <option value="">Select Leave Type</option>
+                            <option value="Sick">Sick Leave</option>
+                            <option value="Casual">Casual Leave</option>
+                            <option value="Emergency">Emergency Leave</option>
+                            <option value="Personal">Personal Leave</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="totalDays" class="block text-gray-700 font-semibold mb-2">Total Days</label>
+                        <input type="text" id="totalDays" class="form-input bg-gray-100" placeholder="Auto-calculated" readonly>
+                        <input type="hidden" id="hiddenTotalDays" name="totalDays">
+                    </div>
+
+                    <div>
+                        <label for="startDate" class="block text-gray-700 font-semibold mb-2">Start Date *</label>
+                        <input type="date" id="startDate" name="startDate" class="form-input" required min="<%= new Date().toISOString().split('T')[0] %>">
+                    </div>
+
+                    <div>
+                        <label for="endDate" class="block text-gray-700 font-semibold mb-2">End Date *</label>
+                        <input type="date" id="endDate" name="endDate" class="form-input" required min="<%= new Date().toISOString().split('T')[0] %>">
+                    </div>
+                </div>
+
+                <!-- Reason -->
+                <div>
+                    <label for="reason" class="block text-gray-700 font-semibold mb-2">Reason for Leave *</label>
+                    <textarea id="reason" name="reason" rows="5" maxlength="500" class="form-textarea" placeholder="Provide detailed reason for your leave application..." required></textarea>
+                    <p class="text-sm text-gray-500 mt-1">Maximum 500 characters</p>
+                    <p class="text-sm text-gray-500" id="charCount">0/500 characters</p>
+                </div>
+
+                <!-- Workload Assignments (Optional) -->
+                <% if (user.role === 'faculty' && facultyMembers && facultyMembers.length > 0) { %>
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2 flex items-center">
+                        <i class="fas fa-tasks mr-2 text-purple-500"></i> Workload Assignment (Optional)
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-4">Assign your workload to other faculty members during your leave period</p>
+                    <div id="workloadContainer" class="space-y-4"></div>
+                    <button type="button" id="addWorkload" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center mt-2">
+                        <i class="fas fa-plus mr-2"></i> Add Workload Assignment
+                    </button>
+                </div>
+                <% } %>
+
+                <!-- Form Actions -->
+                <div class="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200">
+                    <a href="/dashboard" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-6 py-2 rounded-lg font-semibold transition duration-200">
+                        Cancel
+                    </a>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold flex items-center transition duration-200">
+                        <i class="fas fa-paper-plane mr-2"></i> Submit Leave Application
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Auto-calculate total days
+        const startInput = document.getElementById('startDate');
+        const endInput = document.getElementById('endDate');
+        const totalDaysInput = document.getElementById('totalDays');
+        const hiddenTotalDays = document.getElementById('hiddenTotalDays');
+        const reasonTextarea = document.getElementById('reason');
+        const charCount = document.getElementById('charCount');
+
+        function calculateDays() {
+            const start = new Date(startInput.value);
+            const end = new Date(endInput.value);
+            if (start && end && end >= start) {
+                // Calculate difference in days (inclusive of both start and end dates)
+                const diff = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                totalDaysInput.value = diff + (diff === 1 ? ' day' : ' days');
+                hiddenTotalDays.value = diff;
+            } else {
+                totalDaysInput.value = '';
+                hiddenTotalDays.value = '';
+            }
+        }
+
+        startInput.addEventListener('change', calculateDays);
+        endInput.addEventListener('change', calculateDays);
+
+        // Character count for reason textarea
+        reasonTextarea.addEventListener('input', function() {
+            const length = this.value.length;
+            charCount.textContent = length + '/500 characters';
+            if (length > 500) {
+                charCount.classList.add('text-red-600');
+            } else {
+                charCount.classList.remove('text-red-600');
+            }
+        });
+
+        // Workload assignments dynamic
+        let workloadCount = 0;
+        const container = document.getElementById('workloadContainer');
+        const addBtn = document.getElementById('addWorkload');
+
+        if (addBtn) {
+            addBtn.addEventListener('click', () => {
+                workloadCount++;
+                const div = document.createElement('div');
+                div.classList.add('border', 'p-4', 'rounded', 'bg-gray-50');
+                div.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="font-semibold text-gray-700">Assignment ${workloadCount}</h4>
+                        <button type="button" class="remove-workload text-red-500 hover:text-red-700">
+                            <i class="fas fa-times"></i> Remove
+                        </button>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-1">Faculty</label>
+                            <select name="workloadAssignments[${workloadCount}][faculty]" class="form-select" required>
+                                <option value="">Select Faculty</option>
+                                <% facultyMembers.forEach(f => { %>
+                                    <option value="<%= f._id %>"><%= f.username %> (<%= f.email %>)</option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-1">Subject</label>
+                            <input type="text" name="workloadAssignments[${workloadCount}][subject]" class="form-input" placeholder="Enter subject name" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-1">Date</label>
+                            <input type="date" name="workloadAssignments[${workloadCount}][date]" class="form-input" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-1">Time Slot</label>
+                            <select name="workloadAssignments[${workloadCount}][timeSlot]" class="form-select" required>
+                                <option value="">Select Time Slot</option>
+                                <option value="9:00-10:00">9:00 - 10:00 AM</option>
+                                <option value="10:00-11:00">10:00 - 11:00 AM</option>
+                                <option value="11:00-12:00">11:00 - 12:00 PM</option>
+                                <option value="12:00-13:00">12:00 - 1:00 PM</option>
+                                <option value="14:00-15:00">2:00 - 3:00 PM</option>
+                                <option value="15:00-16:00">3:00 - 4:00 PM</option>
+                                <option value="16:00-17:00">4:00 - 5:00 PM</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+
+                // Remove button functionality
+                div.querySelector('.remove-workload').addEventListener('click', () => {
+                    div.remove();
+                    workloadCount--;
+                });
+            });
+        }
+
+        // Form validation
+        document.getElementById('leaveForm').addEventListener('submit', function(e) {
+            const startDate = new Date(startInput.value);
+            const endDate = new Date(endInput.value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (startDate < today) {
+                e.preventDefault();
+                alert('Start date cannot be in the past.');
+                return;
+            }
+
+            if (endDate < startDate) {
+                e.preventDefault();
+                alert('End date cannot be before start date.');
+                return;
+            }
+
+            if (!hiddenTotalDays.value || hiddenTotalDays.value < 1) {
+                e.preventDefault();
+                alert('Please select valid start and end dates.');
+                return;
+            }
+        });
+
+        // Set minimum dates to today
+        const today = new Date().toISOString().split('T')[0];
+        startInput.min = today;
+        endInput.min = today;
+    </script>
+</body>
+</html>

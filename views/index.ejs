@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-calendar-alt text-2xl"></i>
+                    <h1 class="text-2xl font-bold">LeaveManager</h1>
+                </div>
+                <div class="space-x-4">
+                    <a href="/auth/login" class="hover:text-blue-200 transition duration-200 font-semibold">Login</a>
+                    <a href="/auth/register" class="bg-blue-500 hover:bg-blue-700 px-6 py-2 rounded-lg transition duration-200 font-semibold">Register</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="max-w-7xl mx-auto px-4 py-16">
+        <div class="text-center">
+            <h1 class="text-5xl font-bold text-gray-800 mb-6">Streamline Your Leave Management</h1>
+            <p class="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+                Efficient leave management system for educational institutions with automatic workload adjustment and approval workflows.
+            </p>
+            <div class="space-x-4">
+                <a href="/auth/register" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg text-lg font-semibold transition duration-200 inline-flex items-center">
+                    <i class="fas fa-rocket mr-2"></i> Get Started
+                </a>
+                <a href="/auth/login" class="border border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-4 rounded-lg text-lg font-semibold transition duration-200 inline-flex items-center">
+                    <i class="fas fa-sign-in-alt mr-2"></i> Sign In
+                </a>
+            </div>
+        </div>
+
+        <!-- Features Grid -->
+        <div class="grid md:grid-cols-3 gap-8 mt-20">
+            <div class="text-center p-8 bg-white rounded-lg shadow-md hover:shadow-lg transition duration-300">
+                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-user-clock text-2xl text-blue-600"></i>
+                </div>
+                <h3 class="text-xl font-semibold mb-3 text-gray-800">Faculty Portal</h3>
+                <p class="text-gray-600">Apply for leaves and assign workload to colleagues seamlessly with our intuitive interface.</p>
+            </div>
+            
+            <div class="text-center p-8 bg-white rounded-lg shadow-md hover:shadow-lg transition duration-300">
+                <div class="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-tasks text-2xl text-green-600"></i>
+                </div>
+                <h3 class="text-xl font-semibold mb-3 text-gray-800">Workload Management</h3>
+                <p class="text-gray-600">Automatically distribute workload during leave periods to ensure continuous academic operations.</p>
+            </div>
+            
+            <div class="text-center p-8 bg-white rounded-lg shadow-md hover:shadow-lg transition duration-300">
+                <div class="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-check-circle text-2xl text-purple-600"></i>
+                </div>
+                <h3 class="text-xl font-semibold mb-3 text-gray-800">HOD Approval</h3>
+                <p class="text-gray-600">Streamlined approval process with real-time notifications and comprehensive tracking.</p>
+            </div>
+        </div>
+
+        <!-- How It Works -->
+        <div class="mt-20 bg-white rounded-lg shadow-md p-8">
+            <h2 class="text-3xl font-bold text-center text-gray-800 mb-12">How It Works</h2>
+            <div class="grid md:grid-cols-4 gap-8">
+                <div class="text-center">
+                    <div class="bg-blue-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-blue-600 font-bold">1</span>
+                    </div>
+                    <h4 class="font-semibold mb-2">Register & Login</h4>
+                    <p class="text-gray-600 text-sm">Create your account as Faculty or HOD</p>
+                </div>
+                <div class="text-center">
+                    <div class="bg-green-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-green-600 font-bold">2</span>
+                    </div>
+                    <h4 class="font-semibold mb-2">Apply for Leave</h4>
+                    <p class="text-gray-600 text-sm">Submit leave applications with details</p>
+                </div>
+                <div class="text-center">
+                    <div class="bg-yellow-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-yellow-600 font-bold">3</span>
+                    </div>
+                    <h4 class="font-semibold mb-2">Assign Workload</h4>
+                    <p class="text-gray-600 text-sm">Distribute your responsibilities to colleagues</p>
+                </div>
+                <div class="text-center">
+                    <div class="bg-purple-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-purple-600 font-bold">4</span>
+                    </div>
+                    <h4 class="font-semibold mb-2">Get Approval</h4>
+                    <p class="text-gray-600 text-sm">HOD reviews and approves applications</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Section -->
+        <div class="mt-20 text-center">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8">Trusted by Educational Institutions</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
+                <div>
+                    <div class="text-3xl font-bold text-blue-600">50+</div>
+                    <div class="text-gray-600">Faculties</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-green-600">500+</div>
+                    <div class="text-gray-600">Leaves Processed</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-purple-600">95%</div>
+                    <div class="text-gray-600">Approval Rate</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-yellow-600">24/7</div>
+                    <div class="text-gray-600">Support</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white mt-20">
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">LeaveManager</h3>
+                    <p class="text-gray-400">Streamlining leave management for educational institutions with efficiency and transparency.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Quick Links</h3>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="/auth/login" class="hover:text-white transition duration-200">Login</a></li>
+                        <li><a href="/auth/register" class="hover:text-white transition duration-200">Register</a></li>
+                        <li><a href="/about" class="hover:text-white transition duration-200">About</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Support</h3>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="/help" class="hover:text-white transition duration-200">Help Center</a></li>
+                        <li><a href="/contact" class="hover:text-white transition duration-200">Contact Us</a></li>
+                        <li><a href="/docs" class="hover:text-white transition duration-200">Documentation</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Legal</h3>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="/privacy" class="hover:text-white transition duration-200">Privacy Policy</a></li>
+                        <li><a href="/terms" class="hover:text-white transition duration-200">Terms of Service</a></li>
+                        <li><a href="/cookies" class="hover:text-white transition duration-200">Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
+                <p>&copy; 2024 Leave Management System. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Add JavaScript to handle navigation and prevent default behavior if needed
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('LeaveManager landing page loaded');
+            
+            // You can add any interactive functionality here
+            const signInButton = document.querySelector('a[href="/auth/login"]');
+            const registerButton = document.querySelector('a[href="/auth/register"]');
+            
+            if (signInButton) {
+                signInButton.addEventListener('click', function(e) {
+                    console.log('Sign In clicked');
+                    // You can add any pre-navigation logic here
+                });
+            }
+            
+            if (registerButton) {
+                registerButton.addEventListener('click', function(e) {
+                    console.log('Register clicked');
+                    // You can add any pre-navigation logic here
+                });
+            }
+        });
+    </script>
+</body>
+</html>
