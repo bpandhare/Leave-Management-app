@@ -47,5 +47,3 @@ It provides **role-based dashboards** for both faculty members and Heads of Depa
 - express-session  
 
 ---
-
-## 📁 Project Structure
