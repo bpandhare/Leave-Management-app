@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= title %></title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         .application-card {
@@ -146,6 +146,47 @@
                                 </div>
                             </div>
 
+                            <% if (facultyMembers && facultyMembers.length > 0) { %>
+                                <div class="card border-secondary mb-4">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Assign Your Workload</h5>
+                                        <p class="text-muted">If you want to delegate your workload during this leave, choose a colleague and provide the assignment details.</p>
+
+                                        <div class="mb-3">
+                                            <label for="assignedFaculty" class="form-label">Assign To Faculty</label>
+                                            <select class="form-select" id="assignedFaculty" name="assignedFaculty">
+                                                <option value="">-- Select Faculty --</option>
+                                                <% facultyMembers.forEach(member => { %>
+                                                    <option value="<%= member._id %>"><%= member.username %> (<%= member.email %>)</option>
+                                                <% }); %>
+                                            </select>
+                                        </div>
+
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label for="assignmentSubject" class="form-label">Subject / Work Description</label>
+                                                <input type="text" class="form-control" id="assignmentSubject" name="assignmentSubject" placeholder="E.g. Database lab classes">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="assignmentDate" class="form-label">Work Date</label>
+                                                <input type="date" class="form-control" id="assignmentDate" name="assignmentDate">
+                                            </div>
+                                        </div>
+
+                                        <div class="row g-3 mt-3">
+                                            <div class="col-md-6">
+                                                <label for="assignmentTimeSlot" class="form-label">Time Slot</label>
+                                                <input type="text" class="form-control" id="assignmentTimeSlot" name="assignmentTimeSlot" placeholder="E.g. 10:00 AM - 12:00 PM">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="assignmentDetails" class="form-label">Notes / Details</label>
+                                                <input type="text" class="form-control" id="assignmentDetails" name="assignmentDetails" placeholder="Optional details for the assigned faculty">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% } %>
+
                             <!-- Submit Buttons -->
                             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                                 <a href="/dashboard" class="btn btn-secondary me-md-2">
@@ -189,7 +230,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Leave type selection
@@ -259,6 +300,32 @@
                     e.preventDefault();
                     alert('End date cannot be before start date');
                     return false;
+                }
+
+                const assignedFaculty = document.getElementById('assignedFaculty');
+                const assignmentSubject = document.getElementById('assignmentSubject');
+                const assignmentDate = document.getElementById('assignmentDate');
+                const assignmentTimeSlot = document.getElementById('assignmentTimeSlot');
+
+                if (assignedFaculty && assignedFaculty.value) {
+                    if (!assignmentSubject.value.trim()) {
+                        e.preventDefault();
+                        alert('Please provide the subject/work description for the assigned workload.');
+                        assignmentSubject.focus();
+                        return false;
+                    }
+                    if (!assignmentDate.value) {
+                        e.preventDefault();
+                        alert('Please select the work date for the assigned workload.');
+                        assignmentDate.focus();
+                        return false;
+                    }
+                    if (!assignmentTimeSlot.value.trim()) {
+                        e.preventDefault();
+                        alert('Please provide a time slot for the assigned workload.');
+                        assignmentTimeSlot.focus();
+                        return false;
+                    }
                 }
             });
         });

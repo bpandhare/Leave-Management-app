@@ -16,7 +16,11 @@ const leaveSchema = new mongoose.Schema({
         required: [true, 'Start date is required'],
         validate: {
             validator: function(value) {
-                return value >= new Date().setHours(0,0,0,0);
+                // Only validate on creation or when startDate is modified
+                if (!this.isNew && !this.isModified('startDate')) return true;
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                return value >= today;
             },
             message: 'Start date cannot be in the past'
         }
@@ -26,6 +30,8 @@ const leaveSchema = new mongoose.Schema({
         required: [true, 'End date is required'],
         validate: {
             validator: function(value) {
+                // Only validate when endDate or startDate is modified (or on create)
+                if (!this.isNew && !this.isModified('endDate') && !this.isModified('startDate')) return true;
                 return value >= this.startDate;
             },
             message: 'End date must be after start date'
@@ -57,6 +63,10 @@ const leaveSchema = new mongoose.Schema({
             type: String,
             required: true
         },
+        details: {
+            type: String,
+            maxlength: [300, 'Details cannot exceed 300 characters']
+        },
         status: {
             type: String,
             enum: ['Pending', 'Accepted', 'Rejected'],
@@ -75,6 +85,10 @@ const leaveSchema = new mongoose.Schema({
     comments: {
         type: String,
         maxlength: [200, 'Comments cannot exceed 200 characters']
+    },
+    rejectionReason: {
+        type: String,
+        maxlength: [500, 'Rejection reason cannot exceed 500 characters']
     }
 }, {
     timestamps: true

@@ -3,18 +3,19 @@ const mongoose = require('mongoose');
 const Leave = require('../models/LeaveRequest');
 const User = require('../models/User');
 const WorkloadAssignment = require('../models/WorkloadAssignment');
+const { sendLeaveNotification } = require('../config/mailer');
 const router = express.Router();
 
 // Middleware to check authentication
 const requireAuth = (req, res, next) => {
     if (!req.session.user) {
-        return res.redirect('/auth/login');
+        return res.redirect('/');
     }
     
     // Ensure user has an ID (either id or _id)
     if (!req.session.user.id && !req.session.user._id) {
         console.error('❌ No user ID found in session:', req.session.user);
-        return res.redirect('/auth/login?error=Session error, please login again');
+        return res.redirect('/?error=Session error, please login again');
     }
     
     next();
@@ -106,7 +107,65 @@ router.get('/', requireAuth, async (req, res) => {
 
             console.log('HOD Stats:', stats);
 
+            // Get faculty leave details for HOD
+            const facultyMembers = await User.find({
+                department: req.session.user.department,
+                role: { $regex: /faculty/i },
+                isActive: true
+            }).select('username email phone department');
+
+            console.log('HOD Department:', req.session.user.department);
+            console.log('Found faculty members:', facultyMembers.length);
+            facultyMembers.forEach(f => console.log('Faculty:', f.username, '- Role:', f.role));
+
+            // Calculate leave statistics for each faculty member
+            const facultyLeaveDetails = await Promise.all(
+                facultyMembers.map(async (faculty) => {
+                    // Get all approved leaves for this faculty (current year or all time?)
+                    // For now, let's get all approved leaves
+                    const approvedLeaves = await Leave.find({
+                        faculty: faculty._id,
+                        status: 'Approved'
+                    });
+
+                    // Calculate total days taken
+                    const totalDaysTaken = approvedLeaves.reduce((sum, leave) => sum + (leave.totalDays || 0), 0);
+
+                    // Assuming annual leave balance is 15 days (as seen in the code)
+                    const annualLeaveBalance = 15;
+                    const remainingDays = Math.max(0, annualLeaveBalance - totalDaysTaken);
+
+                    // Get pending leaves count
+                    const pendingLeavesCount = await Leave.countDocuments({
+                        faculty: faculty._id,
+                        status: 'Pending'
+                    });
+
+                    return {
+                        _id: faculty._id,
+                        username: faculty.username,
+                        email: faculty.email,
+                        phone: faculty.phone,
+                        department: faculty.department,
+                        totalDaysTaken,
+                        remainingDays,
+                        pendingLeavesCount,
+                        approvedLeavesCount: approvedLeaves.length
+                    };
+                })
+            );
+
+            console.log('Faculty leave details calculated for', facultyLeaveDetails.length, 'members');
+            console.log('Sample faculty detail:', facultyLeaveDetails[0]);
+
             // Pass data for HOD view
+            const successMsg = req.query.success || req.session.success;
+            const errorMsg = req.query.error || req.session.error;
+            
+            // Clear session messages after use
+            delete req.session.success;
+            delete req.session.error;
+            
             res.render('dashboard', {
                 title: 'HOD Dashboard - Leave Management System',
                 user: req.session.user,
@@ -121,8 +180,9 @@ router.get('/', requireAuth, async (req, res) => {
                 currentDate: currentDate,
                 workloadStats: workloadStats,
                 recentAssignments: recentAssignments,
-                success: req.query.success,
-                error: req.query.error
+                facultyLeaveDetails: facultyLeaveDetails, // Add faculty leave details
+                success: successMsg,
+                error: errorMsg
             });
             return;
 
@@ -213,6 +273,13 @@ router.get('/', requireAuth, async (req, res) => {
 
             console.log('Faculty Stats:', stats);
 
+            const successMsg = req.query.success || req.session.success;
+            const errorMsg = req.query.error || req.session.error;
+            
+            // Clear session messages after use
+            delete req.session.success;
+            delete req.session.error;
+
             res.render('dashboard', {
                 title: 'Dashboard - Leave Management System',
                 user: req.session.user,
@@ -224,8 +291,8 @@ router.get('/', requireAuth, async (req, res) => {
                 currentDate: currentDate,
                 workloadStats: workloadStats,
                 recentAssignments: recentAssignments,
-                success: req.query.success,
-                error: req.query.error
+                success: successMsg,
+                error: errorMsg
             });
         }
 
@@ -420,6 +487,50 @@ router.post('/leave/:id/approve', requireAuth, async (req, res) => {
         leave.updatedAt = new Date();
         await leave.save();
 
+        // Fetch faculty details to get email
+        const faculty = await User.findById(leave.faculty);
+        if (faculty && faculty.email) {
+            // Send approval email
+            const leaveTypeLabel = leave.leaveType.charAt(0).toUpperCase() + leave.leaveType.slice(1);
+            const startDate = new Date(leave.startDate).toLocaleDateString();
+            const endDate = new Date(leave.endDate).toLocaleDateString();
+            
+            const emailSubject = `✅ Leave Approved - ${leaveTypeLabel} Leave`;
+            const emailMessage = `
+                <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                    <h2 style="color: #10B981;">Leave Application Approved ✅</h2>
+                    <p>Dear ${faculty.username},</p>
+                    <p>Your leave application has been <strong>approved</strong>.</p>
+                    
+                    <div style="background-color: #f0fdf4; border-left: 4px solid #10B981; padding: 15px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #10B981;">Leave Details:</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li><strong>Leave Type:</strong> ${leaveTypeLabel}</li>
+                            <li><strong>Start Date:</strong> ${startDate}</li>
+                            <li><strong>End Date:</strong> ${endDate}</li>
+                            <li><strong>Total Days:</strong> ${leave.totalDays}</li>
+                            <li><strong>Reason:</strong> ${leave.reason}</li>
+                        </ul>
+                    </div>
+                    
+                    <p>Status: <strong style="color: #10B981;">APPROVED</strong></p>
+                    <p>You can now proceed with your leave. Please ensure that all workload assignments are properly delegated or completed before your leave starts.</p>
+                    
+                    <p>If you have any questions, please contact the HR department.</p>
+                    
+                    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+                    <p style="color: #666; font-size: 12px;">This is an automated email. Please do not reply to this email.</p>
+                </div>
+            `;
+            
+            try {
+                await sendLeaveNotification(faculty.email, emailSubject, emailMessage);
+                console.log(`✅ Approval email sent to ${faculty.email}`);
+            } catch (emailError) {
+                console.error(`❌ Failed to send approval email to ${faculty.email}:`, emailError);
+            }
+        }
+
         console.log('Leave approved successfully:', id);
 
         res.redirect('/dashboard?success=Leave application approved successfully');
@@ -461,6 +572,55 @@ router.post('/leave/:id/reject', requireAuth, async (req, res) => {
         leave.rejectionReason = rejectionReason;
         leave.updatedAt = new Date();
         await leave.save();
+
+        // Fetch faculty details to get email
+        const faculty = await User.findById(leave.faculty);
+        if (faculty && faculty.email) {
+            // Send rejection email
+            const leaveTypeLabel = leave.leaveType.charAt(0).toUpperCase() + leave.leaveType.slice(1);
+            const startDate = new Date(leave.startDate).toLocaleDateString();
+            const endDate = new Date(leave.endDate).toLocaleDateString();
+            
+            const emailSubject = `❌ Leave Rejected - ${leaveTypeLabel} Leave`;
+            const emailMessage = `
+                <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                    <h2 style="color: #EF4444;">Leave Application Rejected ❌</h2>
+                    <p>Dear ${faculty.username},</p>
+                    <p>Unfortunately, your leave application has been <strong>rejected</strong>.</p>
+                    
+                    <div style="background-color: #fef2f2; border-left: 4px solid #EF4444; padding: 15px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #EF4444;">Leave Details:</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li><strong>Leave Type:</strong> ${leaveTypeLabel}</li>
+                            <li><strong>Start Date:</strong> ${startDate}</li>
+                            <li><strong>End Date:</strong> ${endDate}</li>
+                            <li><strong>Total Days:</strong> ${leave.totalDays}</li>
+                            <li><strong>Reason:</strong> ${leave.reason}</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background-color: #fef2f2; border-left: 4px solid #EF4444; padding: 15px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #EF4444;">Rejection Reason:</h3>
+                        <p>${rejectionReason}</p>
+                    </div>
+                    
+                    <p>Status: <strong style="color: #EF4444;">REJECTED</strong></p>
+                    <p>If you believe this is an error or would like to appeal this decision, please contact the HR department or your department head.</p>
+                    
+                    <p>You may reapply for leave at a later date.</p>
+                    
+                    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+                    <p style="color: #666; font-size: 12px;">This is an automated email. Please do not reply to this email.</p>
+                </div>
+            `;
+            
+            try {
+                await sendLeaveNotification(faculty.email, emailSubject, emailMessage);
+                console.log(`✅ Rejection email sent to ${faculty.email}`);
+            } catch (emailError) {
+                console.error(`❌ Failed to send rejection email to ${faculty.email}:`, emailError);
+            }
+        }
 
         console.log('Leave rejected successfully:', id);
 
@@ -598,6 +758,102 @@ router.get('/test-create-leave', requireAuth, async (req, res) => {
         });
     } catch (error) {
         res.json({ error: error.message });
+    }
+});
+
+// Faculty Leave Details Page - HOD Only
+router.get('/faculty-leave-details', requireAuth, async (req, res) => {
+    try {
+        console.log('=== LOADING FACULTY LEAVE DETAILS PAGE ===');
+
+        // Check if user is HOD
+        if (req.session.user.role.toLowerCase() !== 'hod') {
+            return res.redirect('/dashboard?error=Access denied. HOD privileges required.');
+        }
+
+        console.log('HOD Department:', req.session.user.department);
+
+        // Get faculty leave details for HOD
+        const facultyMembers = await User.find({
+            department: req.session.user.department,
+            role: { $regex: /faculty/i },
+            isActive: true
+        }).select('username email phone');
+
+        console.log('Found faculty members:', facultyMembers.length);
+        facultyMembers.forEach(f => console.log('Faculty:', f.username, '- Role:', f.role));
+
+        // Calculate leave statistics for each faculty member
+        const facultyLeaveDetails = await Promise.all(
+            facultyMembers.map(async (faculty) => {
+                // Get all approved leaves for this faculty
+                const approvedLeaves = await Leave.find({
+                    faculty: faculty._id,
+                    status: 'Approved'
+                });
+
+                // Calculate total days taken
+                const totalDaysTaken = approvedLeaves.reduce((sum, leave) => sum + (leave.totalDays || 0), 0);
+
+                // Assuming annual leave balance is 15 days
+                const annualLeaveBalance = 15;
+                const remainingDays = Math.max(0, annualLeaveBalance - totalDaysTaken);
+
+                // Get pending leaves count
+                const pendingLeavesCount = await Leave.countDocuments({
+                    faculty: faculty._id,
+                    status: 'Pending'
+                });
+
+                return {
+                    _id: faculty._id,
+                    username: faculty.username,
+                    email: faculty.email,
+                    phone: faculty.phone,
+                    totalDaysTaken,
+                    remainingDays,
+                    pendingLeavesCount,
+                    approvedLeavesCount: approvedLeaves.length
+                };
+            })
+        );
+
+        console.log('Faculty leave details calculated for', facultyLeaveDetails.length, 'members');
+
+        // Get current date for display
+        const currentDate = new Date().toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        res.render('faculty-leave-details', {
+            title: 'Faculty Leave Details - Leave Management System',
+            user: req.session.user,
+            facultyLeaveDetails: facultyLeaveDetails,
+            currentDate: currentDate,
+            success: req.query.success,
+            error: req.query.error
+        });
+
+    } catch (error) {
+        console.error('Faculty leave details page error:', error);
+        res.redirect('/dashboard?error=Failed to load faculty leave details: ' + error.message);
+    }
+});
+
+// User Profile Page
+router.get('/profile', requireAuth, async (req, res) => {
+    try {
+        // Session already has user data
+        res.render('profile', {
+            title: 'User Profile - Leave Management System',
+            user: req.session.user
+        });
+    } catch (error) {
+        console.error('Profile page error:', error);
+        res.redirect('/dashboard?error=Failed to load profile page');
     }
 });
 

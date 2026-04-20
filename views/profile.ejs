@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - Leave Management System</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 0;
+        }
+        
+        .profile-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .profile-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        .avatar-section {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        
+        .avatar-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            border: 4px solid white;
+            object-fit: cover;
+        }
+        
+        .avatar-upload-btn {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: #ff6b6b;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .avatar-upload-btn:hover {
+            background: #ff5252;
+        }
+        
+        .profile-body {
+            padding: 40px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            display: block;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .form-group input[readonly] {
+            background: #f5f5f5;
+            cursor: not-allowed;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-save {
+            flex: 1;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .btn-save:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn-back {
+            flex: 1;
+            padding: 12px;
+            background: #e9ecef;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .btn-back:hover {
+            background: #dee2e6;
+        }
+        
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 10px;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #avatarInput {
+            display: none;
+        }
+        
+        .file-input-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="profile-container">
+        <div class="profile-card">
+            <!-- Profile Header -->
+            <div class="profile-header">
+                <div class="avatar-section">
+                    <% if (user.avatar) { %>
+                        <img id="avatarImage" src="<%= user.avatar %>" alt="Profile Avatar" class="avatar-image">
+                    <% } else { %>
+                        <div id="avatarImage" class="avatar-image">
+                            <%= user.username.charAt(0).toUpperCase() %>
+                        </div>
+                    <% } %>
+                    <button type="button" class="avatar-upload-btn" onclick="document.getElementById('avatarInput').click()" title="Upload new avatar">
+                        <i class="fas fa-camera"></i>
+                    </button>
+                </div>
+                <h2><%= user.username %></h2>
+                <p style="margin: 5px 0 0 0; opacity: 0.9;"><%= user.role %></p>
+                <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+            </div>
+            
+            <!-- Profile Body -->
+            <div class="profile-body">
+                <% if (typeof message !== 'undefined' && message) { %>
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i><%= message %>
+                    </div>
+                <% } %>
+                
+                <% if (typeof error !== 'undefined' && error) { %>
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i><%= error %>
+                    </div>
+                <% } %>
+                
+                <div id="alertContainer"></div>
+                
+                <form id="profileForm">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" value="<%= user.username %>" readonly>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" value="<%= user.email %>" readonly>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="role">Role</label>
+                        <input type="text" id="role" name="role" value="<%= user.role %>" readonly>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="department">Department</label>
+                        <input type="text" id="department" name="department" value="<%= user.department %>">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="phone">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" value="<%= user.phone %>">
+                    </div>
+                    
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <span>Uploading...</span>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button type="submit" class="btn-save">
+                            <i class="fas fa-save me-2"></i>Save Changes
+                        </button>
+                        <a href="/dashboard" class="btn-back" style="text-decoration: none; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
+                </form>
+                
+                <div class="file-input-hint">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Allowed file types: JPG, PNG, GIF, WebP (Max 5MB)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Avatar upload handler
+        document.getElementById('avatarInput').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Validation
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+
+            if (!allowedTypes.includes(file.type)) {
+                showAlert('Only image files are allowed (JPG, PNG, GIF, WebP)', 'danger');
+                return;
+            }
+
+            if (file.size > maxSize) {
+                showAlert('File size must be less than 5MB', 'danger');
+                return;
+            }
+
+            // Upload
+            await uploadAvatar(file);
+        });
+
+        async function uploadAvatar(file) {
+            const formData = new FormData();
+            formData.append('avatar', file);
+
+            document.getElementById('loading').style.display = 'flex';
+
+            try {
+                const response = await fetch('/api/profile/avatar', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Update avatar display
+                    const avatarImage = document.getElementById('avatarImage');
+                    if (avatarImage.tagName === 'IMG') {
+                        avatarImage.src = data.avatar + '?t=' + new Date().getTime();
+                    } else {
+                        // Create img element
+                        const img = document.createElement('img');
+                        img.id = 'avatarImage';
+                        img.src = data.avatar;
+                        img.alt = 'Profile Avatar';
+                        img.className = 'avatar-image';
+                        avatarImage.parentNode.replaceChild(img, avatarImage);
+                    }
+                    showAlert('Avatar uploaded successfully!', 'success');
+                } else {
+                    showAlert(data.error || 'Failed to upload avatar', 'danger');
+                }
+            } catch (error) {
+                console.error('Avatar upload error:', error);
+                showAlert('Error uploading avatar. Please check file type/size or server status.', 'danger');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // Profile form submit handler
+        document.getElementById('profileForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const phone = document.getElementById('phone').value.trim();
+            const department = document.getElementById('department').value.trim();
+
+            if (!phone || !department) {
+                showAlert('Please fill in all fields', 'danger');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'flex';
+
+            try {
+                const response = await fetch('/api/profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: phone,
+                        department: department
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('Profile updated successfully!', 'success');
+                } else {
+                    showAlert(data.error || 'Failed to update profile', 'danger');
+                }
+            } catch (error) {
+                console.error('Profile update error:', error);
+                showAlert('Error updating profile', 'danger');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>${message}`;
+            
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alertDiv);
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                alertDiv.style.opacity = '0';
+                alertDiv.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => alertDiv.remove(), 300);
+            }, 5000);
+        }
+
+        // Check if session is valid
+        window.addEventListener('load', () => {
+            // The page would have already redirected if not authenticated
+            console.log('Profile page loaded successfully');
+        });
+    </script>
+</body>
+</html>

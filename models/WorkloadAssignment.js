@@ -4,8 +4,13 @@ const mongoose = require('mongoose');
 const workloadAssignmentSchema = new mongoose.Schema({
     leaveApplication: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'LeaveApplication', 
-        required: true 
+        required: true,
+        refPath: 'leaveApplicationModel'
+    },
+    leaveApplicationModel: {
+        type: String,
+        enum: ['LeaveApplication', 'Leave'],
+        default: 'LeaveApplication'
     },
     assignedTo: { 
         type: mongoose.Schema.Types.ObjectId, 
@@ -20,6 +25,9 @@ const workloadAssignmentSchema = new mongoose.Schema({
     subjects: [{ type: String }],
     classes: [{ type: String }],
     totalHours: { type: Number, required: true },
+    date: { type: Date },
+    timeSlot: { type: String },
+    notes: { type: String },
     status: { 
         type: String, 
         enum: ['pending', 'approved', 'rejected'], 

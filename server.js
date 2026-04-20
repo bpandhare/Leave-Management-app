@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
 const path = require('path');
+const cron = require('node-cron');
 
 const app = express();
 
@@ -25,6 +26,10 @@ app.use(session({
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));
+
+// Flash messages middleware
+const flash = require('connect-flash');
+app.use(flash());
 
 // Debug: Check if models load correctly
 console.log('🔧 Loading models...');
@@ -87,6 +92,103 @@ mongoose.connection.on('disconnected', () => {
     console.log('⚠️  Mongoose disconnected from MongoDB');
 });
 
+// Auto-approval cron job setup
+const { sendLeaveNotification } = require('./config/mailer');
+const Leave = require('./models/LeaveRequest');
+const User = require('./models/User');
+
+// Function to auto-approve leaves older than 24 hours
+const autoApprovePendingLeaves = async () => {
+    try {
+        console.log('🔄 Running auto-approval check for pending leaves...');
+        
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        
+        // Find pending leaves older than 24 hours
+        const pendingLeaves = await Leave.find({
+            status: 'Pending',
+            createdAt: { $lt: twentyFourHoursAgo }
+        }).populate('faculty', 'username email department');
+        
+        console.log(`📋 Found ${pendingLeaves.length} pending leaves older than 24 hours`);
+        
+        for (const leave of pendingLeaves) {
+            // Auto-approve the leave
+            leave.status = 'Approved';
+            leave.approvedBy = null; // System auto-approved
+            leave.updatedAt = new Date();
+            leave.comments = 'Auto-approved after 24 hours of no action';
+            await leave.save();
+            
+            console.log(`✅ Auto-approved leave ${leave._id} for ${leave.faculty.username}`);
+            
+            // Send notification email to faculty
+            if (leave.faculty && leave.faculty.email) {
+                const leaveTypeLabel = leave.leaveType.charAt(0).toUpperCase() + leave.leaveType.slice(1);
+                const startDate = new Date(leave.startDate).toLocaleDateString();
+                const endDate = new Date(leave.endDate).toLocaleDateString();
+                
+                const emailSubject = `✅ Leave Auto-Approved - ${leaveTypeLabel} Leave`;
+                const emailMessage = `
+                    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                        <h2 style="color: #10B981;">Leave Application Auto-Approved ✅</h2>
+                        <p>Dear ${leave.faculty.username},</p>
+                        <p>Your leave application has been <strong>automatically approved</strong> as it was not reviewed within 24 hours.</p>
+                        
+                        <div style="background-color: #f0fdf4; border-left: 4px solid #10B981; padding: 15px; margin: 20px 0;">
+                            <h3 style="margin-top: 0; color: #10B981;">Leave Details:</h3>
+                            <ul style="list-style: none; padding: 0;">
+                                <li><strong>Leave Type:</strong> ${leaveTypeLabel}</li>
+                                <li><strong>Start Date:</strong> ${startDate}</li>
+                                <li><strong>End Date:</strong> ${endDate}</li>
+                                <li><strong>Total Days:</strong> ${leave.totalDays}</li>
+                                <li><strong>Reason:</strong> ${leave.reason}</li>
+                            </ul>
+                        </div>
+                        
+                        <p>Status: <strong style="color: #10B981;">AUTO-APPROVED</strong></p>
+                        <p>This approval was processed automatically by the system after 24 hours without HOD review.</p>
+                        <p>You can now proceed with your leave. Please ensure that all workload assignments are properly delegated or completed before your leave starts.</p>
+                        
+                        <p>If you have any questions, please contact the HR department.</p>
+                        
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+                        <p style="color: #666; font-size: 12px;">This is an automated email. Please do not reply to this email.</p>
+                    </div>
+                `;
+                
+                try {
+                    await sendLeaveNotification(leave.faculty.email, emailSubject, emailMessage);
+                    console.log(`📧 Auto-approval email sent to ${leave.faculty.email}`);
+                } catch (emailError) {
+                    console.error(`❌ Failed to send auto-approval email to ${leave.faculty.email}:`, emailError);
+                }
+            }
+        }
+        
+        if (pendingLeaves.length > 0) {
+            console.log(`✅ Auto-approved ${pendingLeaves.length} leaves`);
+        } else {
+            console.log('✅ No leaves to auto-approve');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error in auto-approval cron job:', error);
+    }
+};
+
+// Schedule the cron job to run every hour
+const autoApprovalJob = cron.schedule('0 * * * *', autoApprovePendingLeaves, {
+    scheduled: false // Don't start immediately
+});
+
+// Start the cron job when database is connected
+mongoose.connection.once('open', () => {
+    console.log('🔄 Starting auto-approval cron job...');
+    autoApprovalJob.start();
+    console.log('✅ Auto-approval cron job scheduled (runs every hour)');
+});
+
 // Debug: Check if routes load correctly
 console.log('🔧 Loading routes...');
 try {
@@ -98,11 +200,19 @@ try {
 }
 
 try {
+    const leaveRoutes = require('./routes/leave');
+    app.use('/leave', leaveRoutes);
+    console.log('✅ Leave application routes loaded successfully');
+} catch (error) {
+    console.error('❌ Error loading leave application routes:', error.message);
+}
+
+try {
     const leaveRoutes = require('./routes/leaveRoutes');
     app.use('/leave', leaveRoutes);
-    console.log('✅ Leave routes loaded successfully');
+    console.log('✅ Leave management routes loaded successfully');
 } catch (error) {
-    console.error('❌ Error loading leave routes:', error.message);
+    console.error('❌ Error loading leave management routes:', error.message);
 }
 
 try {
@@ -140,7 +250,16 @@ try {
                 rejected: 0,
                 balance: 15
             },
-            recentActivities: []
+            recentActivities: [],
+            workloadStats: {
+                pendingAssignments: 0,
+                approvedAssignments: 0,
+                rejectedAssignments: 0,
+                totalAssignments: 0
+            },
+            recentAssignments: [],
+            pendingWorkloads: [],
+            departmentStats: {}
         });
     });
 }
@@ -152,49 +271,24 @@ try {
     console.log('✅ Workload routes loaded successfully');
 } catch (error) {
     console.error('❌ Error loading workload routes:', error.message);
-    console.log('⚠️  Creating basic workload routes as fallback');
-    
-    // Fallback basic workload routes
-    app.get('/api/faculty/workload', (req, res) => {
-        if (!req.session.user) {
-            return res.redirect('/auth/login');
-        }
-        
-        if (req.session.user.role !== 'faculty') {
-            return res.status(403).render('error', {
-                title: 'Access Denied',
-                message: 'Only faculty members can access workload assignments.'
-            });
-        }
-        
-        res.render('workload-assignments', {
-            title: 'Workload Assignments - Leave Management System',
-            user: req.session.user,
-            assignments: [],
-            pendingCount: 0
-        });
-    });
+}
 
-    // HOD workload assignment route
-    app.get('/api/hod/assign-workload', (req, res) => {
-        if (!req.session.user) {
-            return res.redirect('/auth/login');
-        }
-        
-        if (req.session.user.role.toLowerCase() !== 'hod') {
-            return res.status(403).render('error', {
-                title: 'Access Denied',
-                message: 'Only HOD can assign workload.'
-            });
-        }
-        
-        res.render('assign-workload', {
-            title: 'Assign Workload - Leave Management System',
-            user: req.session.user,
-            facultyMembers: [],
-            leaves: []
-        });
-    });
+// ✅ ASSIGNMENT ROUTES - FOR HOD WORKLOAD ASSIGNMENT
+try {
+    const assignmentRoutes = require('./routes/assignmentRoutes');
+    app.use('/api', assignmentRoutes); // Workload assignment routes
+    console.log('✅ Assignment routes loaded successfully');
+} catch (error) {
+    console.error('❌ Error loading assignment routes:', error.message);
+}
+
+// ✅ PROFILE ROUTES - FOR USER PROFILE AND AVATAR UPLOADS
+try {
+    const profileRoutes = require('./routes/profileRoutes');
+    app.use('/api', profileRoutes); // Profile routes for avatar and profile management
+    console.log('✅ Profile routes loaded successfully');
+} catch (error) {
+    console.error('❌ Error loading profile routes:', error.message);
 }
 
 // Basic routes

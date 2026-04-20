@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= title %></title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/css/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -36,18 +36,10 @@
             </h2>
             
             <div id="pendingAssignments">
-                <% if (assignments.length === 0) { %>
-                    <div class="text-center py-8 text-gray-500">
-                        <i class="fas fa-check-circle text-3xl mb-3"></i>
-                        <p>No pending workload assignments</p>
-                    </div>
-                <% } else { %>
-                    <!-- Assignments will be loaded via JavaScript -->
-                    <div class="text-center py-8">
-                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-600 mx-auto"></div>
-                        <p class="text-gray-500 mt-4">Loading assignments...</p>
-                    </div>
-                <% } %>
+                <div class="text-center py-8">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-600 mx-auto"></div>
+                    <p class="text-gray-500 mt-4">Loading assignments...</p>
+                </div>
             </div>
         </div>
     </div>

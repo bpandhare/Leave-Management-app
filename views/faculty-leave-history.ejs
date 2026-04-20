@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 1rem;
+        }
+        .leave-progress {
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .leave-progress-bar {
+            height: 100%;
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+        .leave-progress-good { background-color: #198754; }
+        .leave-progress-low { background-color: #ffc107; }
+        .leave-progress-exhausted { background-color: #dc3545; }
+        .table thead th {
+            background: #f1f3f5;
+            border-bottom: 0;
+        }
+        .table-hover tbody tr:hover {
+            background: #f8f9fa;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            line-height: 1.25;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: baseline;
+            border-radius: 0.375rem;
+        }
+        .status-good { background-color: #d1e7dd; color: #0f5132; }
+        .status-low { background-color: #fff3cd; color: #664d03; }
+        .status-exhausted { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="/dashboard">
+                <i class="fas fa-users-cog me-2"></i>
+                LeaveManager
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="/dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="/leave/applications">Approvals</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="/faculty-leave-details">Faculty Details</a>
+                    </li>
+                </ul>
+                <div class="d-flex align-items-center text-white">
+                    <span class="me-3">Welcome, <strong><%= user.username %></strong></span>
+                    <form method="POST" action="/auth/logout" class="d-inline">
+                        <button type="submit" class="btn btn-outline-light btn-sm">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <!-- Page Header -->
+        <div class="row align-items-center mb-4">
+            <div class="col-md-8">
+                <h2 class="display-6 fw-bold mb-2">
+                    <i class="fas fa-user me-2"></i><%= faculty.username %>'s Leave History
+                </h2>
+                <p class="text-muted mb-1">Complete leave record for <%= faculty.username %> in <%= faculty.department %> department</p>
+                <p class="text-muted small mb-0">Email: <%= faculty.email %></p>
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <a href="/faculty-leave-details" class="btn btn-outline-secondary btn-lg me-2 mb-2">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Faculty Details
+                </a>
+                <a href="/dashboard" class="btn btn-primary btn-lg mb-2">
+                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                </a>
+            </div>
+        </div>
+
+        <!-- Success/Error Messages -->
+        <% if (typeof success !== 'undefined' && success) { %>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i><%= success %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <% } %>
+
+        <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i><%= error %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <% } %>
+
+        <!-- Leave Statistics -->
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4 mb-4">
+            <div class="col">
+                <div class="card stats-card h-100">
+                    <div class="card-body d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-uppercase small mb-2 text-white opacity-75">Total Applications</p>
+                            <h3 class="fw-bold text-white mb-0"><%= stats.total %></h3>
+                        </div>
+                        <div class="bg-white bg-opacity-25 p-3 rounded-circle">
+                            <i class="fas fa-calendar-alt text-white fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card stats-card h-100">
+                    <div class="card-body d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-uppercase small mb-2 text-white opacity-75">Days Taken</p>
+                            <h3 class="fw-bold text-white mb-0"><%= stats.totalDaysTaken %></h3>
+                        </div>
+                        <div class="bg-white bg-opacity-25 p-3 rounded-circle">
+                            <i class="fas fa-calendar-check text-white fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card stats-card h-100">
+                    <div class="card-body d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-uppercase small mb-2 text-white opacity-75">Remaining Balance</p>
+                            <h3 class="fw-bold text-white mb-0"><%= stats.remainingDays %></h3>
+                        </div>
+                        <div class="bg-white bg-opacity-25 p-3 rounded-circle">
+                            <i class="fas fa-balance-scale text-white fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card stats-card h-100">
+                    <div class="card-body d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-uppercase small mb-2 text-white opacity-75">Pending</p>
+                            <h3 class="fw-bold text-white mb-0"><%= stats.pending %></h3>
+                        </div>
+                        <div class="bg-white bg-opacity-25 p-3 rounded-circle">
+                            <i class="fas fa-clock text-white fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leave Balance Progress -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3">
+                    <i class="fas fa-chart-line me-2"></i>Annual Leave Balance (2024)
+                </h5>
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="leave-progress mb-2">
+                            <div class="leave-progress-bar <%= stats.remainingDays > 5 ? 'leave-progress-good' : stats.remainingDays > 0 ? 'leave-progress-low' : 'leave-progress-exhausted' %>"
+                                 style="width: <%= Math.min(100, (stats.totalDaysTaken / stats.balance) * 100) %>%">
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between text-sm">
+                            <span>Used: <%= stats.totalDaysTaken %> days</span>
+                            <span>Remaining: <%= stats.remainingDays %> days</span>
+                            <span>Total: <%= stats.balance %> days</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                        <span class="status-badge <%= stats.remainingDays > 5 ? 'status-good' : stats.remainingDays > 0 ? 'status-low' : 'status-exhausted' %>">
+                            <%= stats.remainingDays %> days left
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leave History Table -->
+        <div class="card shadow-sm overflow-hidden">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>Leave Application History
+                </h5>
+            </div>
+            <div class="table-responsive">
+                <% if (leaves && leaves.length > 0) { %>
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Application Date</th>
+                            <th scope="col">Leave Type</th>
+                            <th scope="col">Duration</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Approved By</th>
+                            <th scope="col">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% leaves.forEach(leave => { %>
+                            <tr>
+                                <td class="align-middle py-3">
+                                    <div class="fw-semibold mb-1"><%= leave.createdAt.toLocaleDateString() %></div>
+                                    <small class="text-muted"><%= leave.createdAt.toLocaleTimeString() %></small>
+                                </td>
+                                <td class="align-middle py-3">
+                                    <span class="badge bg-primary"><%= leave.leaveType %></span>
+                                </td>
+                                <td class="align-middle py-3">
+                                    <div class="fw-semibold mb-1">
+                                        <%= leave.startDate.toLocaleDateString() %> - <%= leave.endDate.toLocaleDateString() %>
+                                    </div>
+                                    <small class="text-muted"><%= leave.totalDays %> day<%= leave.totalDays !== 1 ? 's' : '' %></small>
+                                </td>
+                                <td class="align-middle py-3">
+                                    <span class="badge
+                                        <%= leave.status === 'Approved' ? 'bg-success' :
+                                           leave.status === 'Rejected' ? 'bg-danger' :
+                                           'bg-warning text-dark' %>">
+                                        <%= leave.status %>
+                                    </span>
+                                </td>
+                                <td class="align-middle py-3">
+                                    <% if (leave.approvedBy && leave.approvedBy.username) { %>
+                                        <div class="fw-semibold mb-1"><%= leave.approvedBy.username %></div>
+                                        <% if (leave.updatedAt) { %>
+                                            <small class="text-muted"><%= leave.updatedAt.toLocaleDateString() %></small>
+                                        <% } %>
+                                    <% } else { %>
+                                        <span class="text-muted">-</span>
+                                    <% } %>
+                                </td>
+                                <td class="align-middle py-3">
+                                    <div class="mb-2">
+                                        <strong>Reason:</strong>
+                                        <p class="mb-1 text-sm"><%= leave.reason %></p>
+                                    </div>
+                                    <% if (leave.comments) { %>
+                                        <div class="mb-2">
+                                            <strong>Comments:</strong>
+                                            <p class="mb-1 text-sm"><%= leave.comments %></p>
+                                        </div>
+                                    <% } %>
+                                    <% if (leave.rejectionReason) { %>
+                                        <div class="mb-2">
+                                            <strong>Rejection Reason:</strong>
+                                            <p class="mb-1 text-sm text-danger"><%= leave.rejectionReason %></p>
+                                        </div>
+                                    <% } %>
+                                    <% if (leave.workloadAssignments && leave.workloadAssignments.length > 0) { %>
+                                        <div>
+                                            <strong>Workload Assigned:</strong>
+                                            <div class="text-sm">
+                                                <% leave.workloadAssignments.forEach(assignment => { %>
+                                                    <div class="mb-1">
+                                                        <i class="fas fa-user me-1"></i>
+                                                        <%= assignment.faculty && assignment.faculty.username ? assignment.faculty.username : 'Unknown' %>
+                                                        (<%= assignment.subject %> - <%= assignment.date ? new Date(assignment.date).toLocaleDateString() : 'N/A' %>)
+                                                        <span class="badge <%= assignment.status === 'Accepted' ? 'bg-success' : assignment.status === 'Rejected' ? 'bg-danger' : 'bg-warning text-dark' %>">
+                                                            <%= assignment.status %>
+                                                        </span>
+                                                    </div>
+                                                <% }); %>
+                                            </div>
+                                        </div>
+                                    <% } %>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+                <% } else { %>
+                <div class="text-center py-5">
+                    <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Leave Applications Found</h5>
+                    <p class="text-muted"><%= faculty.username %> has not submitted any leave applications yet.</p>
+                </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

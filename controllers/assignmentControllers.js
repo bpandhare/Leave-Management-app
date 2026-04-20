@@ -9,8 +9,9 @@ const assignWorkload = async (req, res) => {
         const { leaveApplicationId, assignedTo, subjects, classes, totalHours } = req.body;
         const assignedBy = req.user._id;
 
-        // Check if user is HOD
-        if (req.user.role !== 'hod') {
+        // Check if user is HOD (case-insensitive)
+        const userRole = (req.user?.role || '').toLowerCase();
+        if (userRole !== 'hod') {
             return res.status(403).json({
                 success: false,
                 message: 'Only HOD can assign workload'
@@ -20,6 +21,7 @@ const assignWorkload = async (req, res) => {
         // Create workload assignment
         const assignment = new WorkloadAssignment({
             leaveApplication: leaveApplicationId,
+            leaveApplicationModel: 'LeaveApplication',
             assignedTo,
             assignedBy,
             subjects,
@@ -51,7 +53,9 @@ const assignWorkload = async (req, res) => {
 // HOD: Get leave applications needing workload assignment
 const getLeaveApplicationsForAssignment = async (req, res) => {
     try {
-        if (req.user.role !== 'hod') {
+        // Check if user is HOD (case-insensitive)
+        const userRole = (req.user?.role || '').toLowerCase();
+        if (userRole !== 'hod') {
             return res.status(403).json({
                 success: false,
                 message: 'Only HOD can access this'
@@ -67,7 +71,7 @@ const getLeaveApplicationsForAssignment = async (req, res) => {
 
         // Get faculty members in the same department
         const facultyMembers = await User.find({
-            role: 'faculty',
+            role: { $regex: /^faculty$/i },
             department: req.user.department,
             _id: { $ne: req.user._id } // Exclude HOD
         }).select('name email');
