@@ -4,12 +4,24 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const path = require('path');
 const cron = require('node-cron');
+const fileUpload = require('express-fileupload');
 
 const app = express();
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// File upload middleware - configure before other middleware
+app.use(fileUpload({
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max file size
+    abortOnLimit: true,
+    useTempFiles: true,
+    tempFileDir: '/tmp/',
+    createParentPath: true,
+    parseNested: true
+}));
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // View engine setup
@@ -218,7 +230,6 @@ try {
 try {
     const dashboardRoutes = require('./routes/dashboardRoutes');
     app.use('/dashboard', dashboardRoutes);
-    app.use('/', dashboardRoutes); // Also mount at root for some routes
     console.log('✅ Dashboard routes loaded successfully');
 } catch (error) {
     console.error('❌ Error loading dashboard routes:', error.message);
@@ -289,6 +300,15 @@ try {
     console.log('✅ Profile routes loaded successfully');
 } catch (error) {
     console.error('❌ Error loading profile routes:', error.message);
+}
+
+// ✅ TIMETABLE ROUTES - FOR FACULTY TIMETABLE UPLOADS AND HOD VIEW
+try {
+    const timetableRoutes = require('./routes/timetableRoutes');
+    app.use('/timetable', timetableRoutes); // Timetable routes
+    console.log('✅ Timetable routes loaded successfully');
+} catch (error) {
+    console.error('❌ Error loading timetable routes:', error.message);
 }
 
 // Basic routes

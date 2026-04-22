@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Timetables - Leave Management System</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .timetable-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .timetable-card {
+            border-left: 5px solid #667eea;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+        }
+        .btn-primary:hover {
+            transform: scale(1.05);
+        }
+        .file-upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .file-upload-area:hover {
+            background-color: #f0f0f0;
+            border-color: #764ba2;
+        }
+        .file-upload-area.drag-over {
+            background-color: #e8e8ff;
+            border-color: #764ba2;
+        }
+        .badge-status {
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+        }
+        .navbar-brand {
+            font-weight: 700;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .date-info {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .action-buttons .btn {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="fas fa-calendar-alt me-2"></i>
+                LeaveManager
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/timetable/faculty">
+                            <i class="fas fa-clock me-1"></i>My Timetables
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/leave/apply">
+                            <i class="fas fa-plus-circle me-1"></i>Apply Leave
+                        </a>
+                    </li>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <div class="user-avatar me-2">
+                                <%= user.name ? user.name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase() %>
+                            </div>
+                            <%= user.username %>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><span class="dropdown-item-text">
+                                <small class="text-muted">Signed in as</small><br>
+                                <strong><%= user.role %></strong>
+                            </span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="POST" action="/auth/logout" class="d-inline">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Alert Messages -->
+        <% if (success) { %>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i><%= success %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <% } %>
+        
+        <% if (error) { %>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i><%= error %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <% } %>
+
+        <!-- Header Section -->
+        <div class="timetable-container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-2"><i class="fas fa-table me-2"></i>My Weekly Timetables</h1>
+                    <p class="mb-0">Upload and manage your weekly class timetables. Your timetables will be visible to the HOD.</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-light btn-lg rounded-pill" data-bs-toggle="modal" data-bs-target="#uploadTimetableModal">
+                        <i class="fas fa-plus me-2"></i>Upload New Timetable
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timetables List -->
+        <div class="row">
+            <div class="col-12">
+                <div id="timetablesList">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Loading your timetables...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Timetable Modal -->
+    <div class="modal fade" id="uploadTimetableModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-upload me-2"></i>Upload Weekly Timetable
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="uploadTimetableForm">
+                        <!-- Week Selection -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="startDate" class="form-label">Week Start Date</label>
+                                <input type="date" class="form-control" id="startDate" required>
+                                <small class="text-muted">Select Monday of the week</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="endDate" class="form-label">Week End Date</label>
+                                <input type="date" class="form-control" id="endDate" required>
+                                <small class="text-muted">Select Friday/Saturday of the week</small>
+                            </div>
+                        </div>
+
+                        <!-- File Upload -->
+                        <div class="mb-3">
+                            <label for="timetableFile" class="form-label">Upload Timetable File</label>
+                            <div class="file-upload-area" id="fileUploadArea">
+                                <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                                <p class="mb-2">Drag and drop your file here or click to browse</p>
+                                <small class="text-muted">Supported formats: PDF, Excel, Word, Image (Max 10MB)</small>
+                                <input type="file" id="timetableFile" class="d-none" accept=".pdf,.xlsx,.xls,.doc,.docx,.jpg,.jpeg,.png" required>
+                            </div>
+                            <div id="fileNameDisplay" class="mt-2 d-none">
+                                <small class="text-success"><i class="fas fa-check-circle me-1"></i>File selected: <span id="selectedFileName"></span></small>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description (Optional)</label>
+                            <textarea class="form-control" id="description" rows="3" placeholder="Add any notes about this timetable..."></textarea>
+                        </div>
+
+                        <!-- Classes Data -->
+                        <div class="mb-3">
+                            <label class="form-label">Classes Information (Optional)</label>
+                            <small class="d-block text-muted mb-2">Add details about your classes for this week</small>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="addClassBtn">
+                                <i class="fas fa-plus me-1"></i>Add Class
+                            </button>
+                            <div id="classesContainer" class="mt-3"></div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-upload me-2"></i>Upload Timetable
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Timetable Modal -->
+    <div class="modal fade" id="viewTimetableModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Timetable Details</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="viewTimetableContent">
+                    <!-- Content will be loaded dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('startDate').setAttribute('min', today);
+        document.getElementById('endDate').setAttribute('min', today);
+
+        // Auto-calculate end date when start date is selected
+        document.getElementById('startDate').addEventListener('change', function() {
+            const startDate = new Date(this.value);
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 4); // Add 4 days for Friday
+            document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+        });
+
+        // File upload drag and drop
+        const fileUploadArea = document.getElementById('fileUploadArea');
+        const timetableFileInput = document.getElementById('timetableFile');
+
+        fileUploadArea.addEventListener('click', () => timetableFileInput.click());
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileUploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            fileUploadArea.addEventListener(eventName, () => {
+                fileUploadArea.classList.add('drag-over');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            fileUploadArea.addEventListener(eventName, () => {
+                fileUploadArea.classList.remove('drag-over');
+            });
+        });
+
+        fileUploadArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            timetableFileInput.files = files;
+            updateFileDisplay();
+        });
+
+        timetableFileInput.addEventListener('change', updateFileDisplay);
+
+        function updateFileDisplay() {
+            if (timetableFileInput.files.length > 0) {
+                const fileName = timetableFileInput.files[0].name;
+                document.getElementById('selectedFileName').textContent = fileName;
+                document.getElementById('fileNameDisplay').classList.remove('d-none');
+            }
+        }
+
+        // Add class row
+        let classCount = 0;
+        document.getElementById('addClassBtn').addEventListener('click', function() {
+            classCount++;
+            const classInput = `
+                <div class="card mb-2 p-3" data-class-id="${classCount}">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <input type="text" class="form-control form-control-sm" placeholder="Day">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="text" class="form-control form-control-sm" placeholder="Time">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control form-control-sm" placeholder="Course Code">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control form-control-sm" placeholder="Course Name">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-sm btn-danger w-100 remove-class">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('classesContainer').insertAdjacentHTML('beforeend', classInput);
+        });
+
+        document.getElementById('classesContainer').addEventListener('click', function(e) {
+            if (e.target.closest('.remove-class')) {
+                e.target.closest('[data-class-id]').remove();
+            }
+        });
+
+        // Upload form submission
+        document.getElementById('uploadTimetableForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const description = document.getElementById('description').value;
+            const file = document.getElementById('timetableFile').files[0];
+
+            if (!startDate || !endDate || !file) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('startDate', startDate);
+            formData.append('endDate', endDate);
+            formData.append('description', description);
+            formData.append('timetableFile', file);
+
+            try {
+                const response = await fetch('/timetable/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('Timetable uploaded successfully!');
+                    document.getElementById('uploadTimetableForm').reset();
+                    document.getElementById('fileNameDisplay').classList.add('d-none');
+                    bootstrap.Modal.getInstance(document.getElementById('uploadTimetableModal')).hide();
+                    loadTimetables();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error uploading timetable:', error);
+                alert('Error uploading timetable');
+            }
+        });
+
+        // Load timetables
+        async function loadTimetables() {
+            try {
+                const response = await fetch('/timetable/api/my-timetables');
+                const result = await response.json();
+
+                if (result.success && result.timetables.length > 0) {
+                    let html = '<div class="row">';
+                    result.timetables.forEach(timetable => {
+                        const startDate = new Date(timetable.week.startDate).toLocaleDateString('en-IN');
+                        const endDate = new Date(timetable.week.endDate).toLocaleDateString('en-IN');
+                        
+                        html += `
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card timetable-card shadow-sm h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="card-title mb-0">Week Timetable</h6>
+                                            <span class="badge bg-success">Uploaded</span>
+                                        </div>
+                                        <p class="date-info mb-3">
+                                            <i class="fas fa-calendar-alt me-1"></i>
+                                            ${startDate} to ${endDate}
+                                        </p>
+                                        ${timetable.description ? `<p class="small text-muted mb-3">${timetable.description}</p>` : ''}
+                                        <div class="action-buttons">
+                                            <a href="/timetable/download/${timetable._id}" class="btn btn-primary flex-grow-1">
+                                                <i class="fas fa-download me-1"></i>Download
+                                            </a>
+                                            <button class="btn btn-danger" onclick="deleteTimetable('${timetable._id}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    document.getElementById('timetablesList').innerHTML = html;
+                } else {
+                    document.getElementById('timetablesList').innerHTML = `
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No timetables uploaded yet</p>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadTimetableModal">
+                                <i class="fas fa-plus me-2"></i>Upload Your First Timetable
+                            </button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading timetables:', error);
+                document.getElementById('timetablesList').innerHTML = '<div class="alert alert-danger">Error loading timetables</div>';
+            }
+        }
+
+        // Delete timetable
+        async function deleteTimetable(id) {
+            if (!confirm('Are you sure you want to delete this timetable?')) return;
+
+            try {
+                const response = await fetch(`/timetable/delete/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('Timetable deleted successfully!');
+                    loadTimetables();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error deleting timetable:', error);
+                alert('Error deleting timetable');
+            }
+        }
+
+        // Load timetables on page load
+        document.addEventListener('DOMContentLoaded', loadTimetables);
+    </script>
+</body>
+</html>

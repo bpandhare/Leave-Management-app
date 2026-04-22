@@ -125,6 +125,23 @@ router.post('/register', async (req, res) => {
             }
         }
 
+        // CoHOD Validation - Only one CoHOD per department
+        if (role === 'Cohod') {
+            const existingCohod = await User.findOne({ 
+                role: 'Cohod', 
+                department: department 
+            });
+            
+            if (existingCohod) {
+                return res.render('auth/register', { 
+                    title: 'Register - Leave Management System',
+                    error: `CoHOD for ${department} department already exists. Please select a different department or contact administration.`,
+                    formData: req.body,
+                    user: null
+                });
+            }
+        }
+
         // Create new user
         const user = new User({
             username: username.toLowerCase().trim(),

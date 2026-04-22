@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Timetable - Leave Management System</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .header-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        .timetable-frame {
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .back-button {
+            color: white;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            transition: opacity 0.3s ease;
+        }
+        .back-button:hover {
+            opacity: 0.8;
+            color: white;
+        }
+        .navbar-brand {
+            font-weight: 700;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .file-info {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .file-info-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+        .file-info-item:last-child {
+            margin-bottom: 0;
+        }
+        .file-info-item i {
+            color: #667eea;
+            width: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="fas fa-calendar-alt me-2"></i>
+                LeaveManager
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <% if (user.role.toLowerCase() === 'faculty') { %>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/timetable/my-timetables">
+                            <i class="fas fa-clock me-1"></i>My Timetables
+                        </a>
+                    </li>
+                    <% } %>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <div class="user-avatar me-2">
+                                <%= user.name ? user.name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase() %>
+                            </div>
+                            <%= user.username %>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><span class="dropdown-item-text">
+                                <small class="text-muted">Signed in as</small><br>
+                                <strong><%= user.role %></strong>
+                            </span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="POST" action="/auth/logout" class="d-inline">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Back Button -->
+        <a href="/timetable/my-timetables" class="back-button">
+            <i class="fas fa-arrow-left"></i> Back to My Timetables
+        </a>
+
+        <!-- Alert Messages -->
+        <% if (success) { %>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i><%= success %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <% } %>
+        
+        <% if (error) { %>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i><%= error %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <% } %>
+
+        <!-- Header Section -->
+        <div class="header-section">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-2"><i class="fas fa-table me-2"></i>Timetable Details</h1>
+                    <p class="mb-0">Week of <%= startDate %> to <%= endDate %></p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <a href="/timetable/download/<%= timetable._id %>" class="btn btn-light btn-lg rounded-pill">
+                        <i class="fas fa-download me-2"></i>Download
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Information -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="file-info">
+                    <div class="file-info-item">
+                        <i class="fas fa-file"></i>
+                        <strong>File Name:</strong>
+                        <span><%= timetable.timetableFile.originalname %></span>
+                    </div>
+                    <div class="file-info-item">
+                        <i class="fas fa-database"></i>
+                        <strong>File Size:</strong>
+                        <span><%= (timetable.timetableFile.filesize / 1024 / 1024).toFixed(2) %> MB</span>
+                    </div>
+                    <div class="file-info-item">
+                        <i class="fas fa-calendar"></i>
+                        <strong>Uploaded:</strong>
+                        <span><%= new Date(timetable.createdAt).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %></span>
+                    </div>
+                    <% if (timetable.description) { %>
+                    <div class="file-info-item">
+                        <i class="fas fa-notes"></i>
+                        <strong>Description:</strong>
+                        <span><%= timetable.description %></span>
+                    </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-eye me-2"></i>Timetable Preview
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <% const fileExtension = timetable.timetableFile.originalname.split('.').pop().toLowerCase(); %>
+                        
+                        <% if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) { %>
+                            <!-- Image Preview -->
+                            <div class="text-center">
+                                <img src="/uploads/timetables/<%= timetable.timetableFile.filename %>" alt="Timetable" style="max-width: 100%; max-height: 600px; border-radius: 10px;">
+                            </div>
+                        <% } else if (fileExtension === 'pdf') { %>
+                            <!-- PDF Preview -->
+                            <div style="width: 100%; height: 600px; border-radius: 10px; overflow: hidden;">
+                                <object data="/uploads/timetables/<%= timetable.timetableFile.filename %>" type="application/pdf" style="width: 100%; height: 100%;">
+                                    <p>PDF Preview not supported. <a href="/timetable/download/<%= timetable._id %>" class="btn btn-primary btn-sm"><i class="fas fa-download me-1"></i>Download PDF</a></p>
+                                </object>
+                            </div>
+                        <% } else { %>
+                            <!-- Other file types -->
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                This file type cannot be previewed online. Please download to view.
+                            </div>
+                            <div class="text-center">
+                                <a href="/timetable/download/<%= timetable._id %>" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-download me-2"></i>Download File
+                                </a>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Classes Information -->
+        <% if (timetable.classes && timetable.classes.length > 0) { %>
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-book me-2"></i>Classes This Week
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Day</th>
+                                        <th>Time</th>
+                                        <th>Course Code</th>
+                                        <th>Course Name</th>
+                                        <th>Classroom</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% timetable.classes.forEach(classItem => { %>
+                                    <tr>
+                                        <td><%= classItem.day %></td>
+                                        <td><%= classItem.time || 'N/A' %></td>
+                                        <td><%= classItem.courseCode || 'N/A' %></td>
+                                        <td><%= classItem.courseName || 'N/A' %></td>
+                                        <td><%= classItem.classroom || 'N/A' %></td>
+                                    </tr>
+                                    <% }); %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <% } %>
+    </div>
+
+    <script src="/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
